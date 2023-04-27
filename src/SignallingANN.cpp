@@ -58,7 +58,6 @@ int main() {
 	double mut_step_ann_R = 0.001;
 	double mut_step_ann_S = 0.001;
 
-
 	int s_max = 10;			//The number of signals strengths tried before a signal of 0 is sent by default
 
 	int interactionPartners = 10;
@@ -85,7 +84,7 @@ int main() {
 	//Reports
 	int ReportFreq_annVar = 0;
 	if (Report_annVar > 0){
-		ReportFreq_annVar = floor(N/Report_annVar);
+		ReportFreq_annVar = floor(G/Report_annVar);
 	}
 
 	//Time
@@ -236,7 +235,7 @@ int main() {
 
 
 		//Start Generation Loop
-		for (int g = 0; g < G; g++){
+		for (int g = 0; g <= G; g++){
 
 			//Assign qualities to senders in offspring loop, not here.
 
@@ -373,9 +372,9 @@ int main() {
 				}
 			}
 
-			if (Report_annVar > 0 & g%ReportFreq_annVar == 0){
+			if (Report_annVar > 0 & g > 0 & g%ReportFreq_annVar == 0){	//Report ANN stats for fittest individuals
 
-				std::vector<int> fittestSenders;
+				std::vector<int> fittestSenders;	//Find fittest individuals in population by populating this vector with their indices
 				fittestSenders.push_back(0);
 				double minFit = SenderPopulation[0].get_fitness();
 				int minFitNum = 0;	//position in vector
