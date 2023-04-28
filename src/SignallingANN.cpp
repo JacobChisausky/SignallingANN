@@ -20,22 +20,26 @@
 //These cost and benefit functions, and calculation of fitness, are what I really want to go over with Graeme
 
 //Cost function
-double cost_function(double s, double q){			//Add options to input too...
+double cost_function(double s, double q, double coeff){			//Add options to input too...
 	//For now - just linear
-	return q - s;
+	return s - q;
 }
 
 //Benefit function for senders
-double sender_benefit_function(bool response, double q){
+double sender_benefit_function(bool response, double q, std::string option){
 	//For now - flat (quality doesn't impact benefit)
 	//Receiver response = 1 fitness. No response = 0.
-	return double(response);
+	if (option == "flat"){
+		return double(response);
+	} else {
+		return (-99);
+	}
 }
 
 //Benefit function for receivers
 double receiver_benefit_function(bool response, double q){
 	//If response sent: payoff = q
-	//IF response not sent: payoff = 1-q
+	//If response not sent: payoff = 1-q
 	//So payoffs are always positive - but it is better to ignore q < 0.5 and respond to q > 0.5
 
 	//Response sent			//Response not sent (response = 0)
@@ -47,35 +51,35 @@ int main() {
 	const int k = 2;
 
 	int seed = 123456789;
-	double N = 500;	//There will be N receivers and N senders. Stored as double for calculations
-	int G = 1000;
+	const double N = 1000;	//There will be N receivers and N senders. Stored as double for calculations
+	const int G = 100000;
 
-	double init_ann_range = 1.0;	//ANN stats will be initialized randomly + or - this value
+	const double init_ann_range = 1.0;	//ANN stats will be initialized randomly + or - this value
 
-	double mut_rate_ann_S = 0.01;
-	double mut_rate_ann_R = 0.01;
+	const double mut_rate_ann_S = 0.01;
+	const double mut_rate_ann_R = 0.01;
 
-	double mut_step_ann_R = 0.001;
-	double mut_step_ann_S = 0.001;
+	const double mut_step_ann_R = 0.001;
+	const double mut_step_ann_S = 0.001;
 
-	int s_max = 10;			//The number of signals strengths tried before a signal of 0 is sent by default
+	//Payoff and cost options
+	const std::string sender_benefit_option = "flat"; //flat: benefit 1 if received a response, 0 if not
+	const double cost_function_coeff = 0.5;
 
-	int interactionPartners = 10;
+	const int s_max = 10;			//The number of signals strengths tried before a signal of 0 is sent by default
 
-	int replicates = 1;
+	const int interactionPartners = 10;
 
-	int coutReport = 0;
+	const bool complexInit = true;		//If true, initial ANNs will not be allowed to be completely flat
 
-	int Report_annVar = 4; //Export this many generations of ANN variable data. 0 for no report, 1 for only last generation
-	int Report_annVar_N = 25;	//How many individuals do you want to report ann stats for? The highest fitness individuals will be reported
-	bool Report_annInit = true;	//Do you want initial generation ann data?
+	const int replicates = 1;
 
-	int reportFreq = 50; //Export data every this many generations... change that
+	const int Report_annVar = 10; //Export this many generations of ANN variable data. 0 for no report, 1 for only last generation
+	const int Report_annVar_N = 100;	//How many individuals do you want to report ann stats for? The highest fitness individuals will be reported
+	const bool Report_annInit = true;	//Do you want initial generation ann data?
 
-	std::string dataFileName = "ann_model";
-	std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
-
-
+	const std::string dataFileName = "forR";
+	const std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
 
 
 
@@ -184,34 +188,54 @@ int main() {
 
 		//Initialize Population
 
-		for (int i = 0; i < N; i++){
+		for (int i = 0; i < N; i++){	//senders
 			std::array<double, 39> sender_ann; //Create ann for sender
-			for (int j = 0; j < size(sender_ann); j++){
-				sender_ann[j] = init_ann_dist(rng);				//Create a random neural network for senders
+			if (complexInit == false){
+				for (int j = 0; j < size(sender_ann); j++){
+					sender_ann[j] = init_ann_dist(rng);				//Create a random neural network for senders
+				}
+			} else if (complexInit==true){
+				bool annOkay = false;
+				while (annOkay == false){
+					for (int j = 0; j < size(sender_ann); j++){
+						sender_ann[j] = init_ann_dist(rng);				//Create a random neural network for senders
+					}
+					//Now test the network and if it is complex enough, set annOkay to true
+					annOkay = annS_test(10, sender_ann);
+				}
 			}
+
 			//For now - flat quality distribution only
 			double qualityInit = qual_dist(rng);
 
 			SenderPopulation.push_back(Sender(sender_ann,qualityInit));		//Create sender agent  with that network
 			SenderOffspring	.push_back(Sender(sender_ann,qualityInit));		//Offspring = parents in first generation.
 
+		}
+
+		for (int i = 0; i < N; i++){	//receivers
+
 			std::array<double, 34> receiver_ann; //Create ann for receiver
-			for (int j = 0; j < size(receiver_ann); j++){		//Create a random neural network for receivers
-				receiver_ann[j] = init_ann_dist(rng);
+			if (complexInit == false){
+				for (int j = 0; j < size(receiver_ann); j++){		//Create a random neural network for receivers
+					receiver_ann[j] = init_ann_dist(rng);
+				}
+			} else if (complexInit==true){
+				bool annOkay = false;
+				while (annOkay == false){
+					for (int j = 0; j < size(receiver_ann); j++){		//Create a random neural network for receivers
+						receiver_ann[j] = init_ann_dist(rng);
+					}
+					//Now test the network and if it is complex enough, set annOkay to true
+					annOkay = annR_test(10, receiver_ann);
+				}
 			}
+
 			ReceiverPopulation.push_back(Receiver(receiver_ann));		//Create sender agent  with that network
 			ReceiverOffspring.push_back(Receiver(receiver_ann));		//Offspring = parents in first generation.
 		}
 
 		//Now SenderPopulation and ReceiverPopulation are populated with agents of random networks and fitness 0.
-
-		//Testing purposes...
-		for (int i = 0; i < 10; i++){
-			for (int j = 0; j <=33; j++){
-				std::cout << ReceiverPopulation[i].get_ann(j) << " ";
-			}
-			std::cout << "\n";
-		}
 
 		//Write initial ANNs to file - unless 0 reports are requested
 		if (Report_annVar > 0 & Report_annInit == true){
@@ -274,7 +298,7 @@ int main() {
 					}	//By now, s is (0,1)
 
 					//Determine cost of signal
-					double cost_S = cost_function(s, q_cur);
+					double cost_S = cost_function(s, q_cur, cost_function_coeff);
 
 					//Fitness = benefit - cost...? additive not multiplicative - is that okay? Talk to GR about it.
 
@@ -285,7 +309,7 @@ int main() {
 					}
 
 					//Benefit to sender
-					double benefit_S = sender_benefit_function(response, q_cur);
+					double benefit_S = sender_benefit_function(response, q_cur, sender_benefit_option);
 
 					//Payoffs to senders and receivers
 					double payoffReceiver = receiver_benefit_function(response, q_cur);

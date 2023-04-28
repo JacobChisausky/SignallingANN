@@ -46,5 +46,8 @@ private:
 };
 
 double rlu(double input);
+bool annS_test(int resolution, std::array<double, 39> ann);
+bool annR_test(int resolution, std::array<double, 34> ann);
+
 
 //#endif /* SIGNALLER_H_ */
