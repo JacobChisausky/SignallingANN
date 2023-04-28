@@ -17,23 +17,35 @@
 #include "agents.h"
 //using namespace std;
 
+//To talk to GR about: should we introduce x new individuals each generation. I worry that mutations are too gradual - and we might want completely new individuals every once in a while
+
 //These cost and benefit functions, and calculation of fitness, are what I really want to go over with Graeme
 
 //Cost function
-double cost_function(double s, double q, double coeff){			//Add options to input too...
-	//For now - just linear
-	return s - q;
-}
+//double cost_function(double s, double q, double coeff){			//Add options to input too...
+//For now - just linear
+//	return s - q;
+//}
 
 //Benefit function for senders
-double sender_benefit_function(bool response, double q, std::string option){
-	//For now - flat (quality doesn't impact benefit)
-	//Receiver response = 1 fitness. No response = 0.
-	if (option == "flat"){
-		return double(response);
-	} else {
-		return (-99);
-	}
+double sender_fitness_function(bool response, double s, double q, double c, int interactionPartners){
+	//This will be ran after each interaction and summed for all interaction. Each value is divided by interactionPartners to keep consistency across replicates - max fitness = 1, min = 0
+
+	//This is multiplicative: fitness = benefits * survival probability
+	//Where survival probability is 1 - costs
+
+	//Benefits per interaction: 1 if receive response, 0 if not
+	//Survival prob: 1 - s^1+cq
+	//Follows Biernaskie et al 2014
+	//c is a coefficient that determines the effect of q on signal costs.
+	//Problem? If no responses are given, fitness is 0.
+
+	double fitness = ( (int(response) * (1 - std::pow(s,(1+ (c*q))) ) ) / interactionPartners );
+
+	return fitness;
+
+	//Write a version which ignores senders and just is grafen-esuqe with reprod success = s/sbar ?
+
 }
 
 //Benefit function for receivers
@@ -48,31 +60,31 @@ double receiver_benefit_function(bool response, double q){
 
 int main() {
 
+	const int replicates = 1;
+
 	const int k = 2;
 
 	int seed = 123456789;
 	const double N = 1000;	//There will be N receivers and N senders. Stored as double for calculations
 	const int G = 100000;
 
+	const double c = 10.0;		//This determines the relationship between sender quality and signal cost. Higher = stronger reduction of cost with quality. 0 = same cost for all signallers.
+
 	const double init_ann_range = 1.0;	//ANN stats will be initialized randomly + or - this value
 
 	const double mut_rate_ann_S = 0.01;
-	const double mut_rate_ann_R = 0.01;
+	double mut_rate_ann_R = 0.01;
 
-	const double mut_step_ann_R = 0.001;
-	const double mut_step_ann_S = 0.001;
-
-	//Payoff and cost options
-	const std::string sender_benefit_option = "flat"; //flat: benefit 1 if received a response, 0 if not
-	const double cost_function_coeff = 0.5;
+	const double mut_step_ann_S = 0.01;
+	const double mut_step_ann_R = 0.05;
 
 	const int s_max = 10;			//The number of signals strengths tried before a signal of 0 is sent by default
 
-	const int interactionPartners = 10;
+	const int interactionPartners = 10;	//How many interactions per generation does each signaller and receiver engage in?
 
 	const bool complexInit = true;		//If true, initial ANNs will not be allowed to be completely flat
 
-	const int replicates = 1;
+	const bool nullReceivers = true;	//If true: receivers all respond with Pr = s. Their ANNs never mutate. This is for testing senders.
 
 	const int Report_annVar = 10; //Export this many generations of ANN variable data. 0 for no report, 1 for only last generation
 	const int Report_annVar_N = 100;	//How many individuals do you want to report ann stats for? The highest fitness individuals will be reported
@@ -140,6 +152,10 @@ int main() {
 	//For k-selection tournament
 	std::array<int, k> tourn_arr;
 
+	//Disable mutations if using nullReceivers
+	if (nullReceivers == true){
+		mut_rate_ann_R = 0.000;
+	}
 	//Random number generators and distributions
 	auto rng = std::default_random_engine {seed};
 	std::uniform_real_distribution<double> prob(0,1);
@@ -213,26 +229,38 @@ int main() {
 
 		}
 
-		for (int i = 0; i < N; i++){	//receivers
+		if (nullReceivers == false){
+			for (int i = 0; i < N; i++){	//receivers
 
-			std::array<double, 34> receiver_ann; //Create ann for receiver
-			if (complexInit == false){
-				for (int j = 0; j < size(receiver_ann); j++){		//Create a random neural network for receivers
-					receiver_ann[j] = init_ann_dist(rng);
-				}
-			} else if (complexInit==true){
-				bool annOkay = false;
-				while (annOkay == false){
+				std::array<double, 34> receiver_ann; //Create ann for receiver
+				if (complexInit == false){
 					for (int j = 0; j < size(receiver_ann); j++){		//Create a random neural network for receivers
 						receiver_ann[j] = init_ann_dist(rng);
 					}
-					//Now test the network and if it is complex enough, set annOkay to true
-					annOkay = annR_test(10, receiver_ann);
+				} else if (complexInit==true){
+					bool annOkay = false;
+					while (annOkay == false){
+						for (int j = 0; j < size(receiver_ann); j++){		//Create a random neural network for receivers
+							receiver_ann[j] = init_ann_dist(rng);
+						}
+						//Now test the network and if it is complex enough, set annOkay to true
+						annOkay = annR_test(10, receiver_ann);
+					}
 				}
-			}
 
-			ReceiverPopulation.push_back(Receiver(receiver_ann));		//Create sender agent  with that network
-			ReceiverOffspring.push_back(Receiver(receiver_ann));		//Offspring = parents in first generation.
+				ReceiverPopulation.push_back(Receiver(receiver_ann));		//Create sender agent  with that network
+				ReceiverOffspring.push_back(Receiver(receiver_ann));		//Offspring = parents in first generation.
+			}
+		} else if (nullReceivers == true){
+			//Disable mutations
+
+			//This ANN will give output = input	   //= {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 , 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33};
+			std::array<double, 34> receiver_ann_NULL = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  1,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0 ,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0,  0};
+			for (int i = 0; i < N; i++){
+
+				ReceiverPopulation.push_back(Receiver(receiver_ann_NULL));		//Create sender agent  with that network
+				ReceiverOffspring.push_back(Receiver(receiver_ann_NULL));		//Offspring = parents in first generation.
+			}
 		}
 
 		//Now SenderPopulation and ReceiverPopulation are populated with agents of random networks and fitness 0.
@@ -298,7 +326,7 @@ int main() {
 					}	//By now, s is (0,1)
 
 					//Determine cost of signal
-					double cost_S = cost_function(s, q_cur, cost_function_coeff);
+					//double cost_S = cost_function(s, q_cur, cost_function_coeff);
 
 					//Fitness = benefit - cost...? additive not multiplicative - is that okay? Talk to GR about it.
 
@@ -309,11 +337,11 @@ int main() {
 					}
 
 					//Benefit to sender
-					double benefit_S = sender_benefit_function(response, q_cur, sender_benefit_option);
+					//double benefit_S = sender_benefit_function(response, q_cur, sender_benefit_option);
 
 					//Payoffs to senders and receivers
 					double payoffReceiver = receiver_benefit_function(response, q_cur);
-					double payoffSender = benefit_S - cost_S;
+					double payoffSender = sender_fitness_function(response, s, q_cur, c, interactionPartners);
 
 					//Fitness changes
 					SenderPopulation[nullVecS[j]].change_fitness(payoffSender);
