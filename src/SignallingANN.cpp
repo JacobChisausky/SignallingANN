@@ -101,8 +101,8 @@ int main() {
 
 	const std::string dataFileName = "make_honest_weights";
 
-	//const std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
-	const std::string dataFileFolder = "./";
+	const std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
+	//const std::string dataFileFolder = "./";
 
 
 
