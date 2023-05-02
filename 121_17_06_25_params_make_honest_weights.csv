@@ -1,0 +1,2 @@
+replicates,k,seed,N,G,c,init_ann_range,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,s_max,interactionPartners,complexInit,nullReceivers,nullSenders,nullHonestBeginG,Report_annVar,Report_annVar_N,Report_annInit,dataFileName,dataFileFolder
+1,2,123456789,1000.000000,200000,10.000000,1.000000,0.010000,0.010000,0.010000,0.050000,10,10,1,0,0,210000,1,1000,1,make_honest_weights,./

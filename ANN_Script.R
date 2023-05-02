@@ -215,7 +215,10 @@ file <- "120_17_55_35_annVars_first_real_test.csv"  #They are all sending signal
     #Why do receivers respond? Not responding should be the same as responding: payoff of q or 1-q will be the same
     #Same problem as in other sim: If senders don't send, no inventive to respond
         #If responders don't respond, no incentive to send.
-file <- "121_10_47_23_annVars_test_honest_start_smallN.csv"
+file <- "121_11_00_26_annVars_test_honest_start_smallN.csv" #Honest at 100000. By 120000 when coevolution start, a few receivers respond to very strong signals. We reach pooling equilibrium soon.
+file <- "121_13_38_28_annVars_test_honest_start_smallN.csv" #By g=220000 when honest until 200000: receivers A1 always.
+    #How can I increase the incentive to A1 only high q and A2 only low q?
+    #Implement k coefficient to receiver payoffs
 
 unique(annFile$gen)
 annFile <- read.csv(paste0(directory,"/",file))
@@ -226,13 +229,13 @@ rEnd <- subset(rFile,gen==max(rFile$gen))
 ##
 
 unique(sFile$gen)
-sEnd <- subset(sFile,gen==unique(sFile$gen)[10])
+sEnd <- subset(sFile,gen==220000)
 
 # Senders ####
 
 n<-2
 n_annS<-as.numeric(sEnd[n,7:45])
-senderANN_printSurface(20,n_annS)
+senderANN_printSurface(30,n_annS)
 
 
 #Null Receiver analytical predictuon
@@ -250,9 +253,9 @@ ggplot(data) +
 
 #Real data - receivers
 unique(rFile$gen)
-rEnd <- subset(rFile,gen==100000)
+rEnd <- subset(rFile,gen==220000)
 
-n<-6
+n<-1
 n_annR<-as.numeric(rEnd[n,-(1:6)])
 data<-receiverPhenotype(100,n_annR)
 

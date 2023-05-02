@@ -65,7 +65,7 @@ int main() {
 
 	const int k = 2;
 
-	int seed = 123456789;
+	int seed = time(0);		//This won't work if we send many jobs at once but for now it's okay
 	const double N = 1000;	//There will be N receivers and N senders. Stored as double for calculations
 	const int G = 200000;
 
@@ -89,18 +89,21 @@ int main() {
 	const bool nullReceivers = false;	//If true: receivers all respond with Pr = s. Their ANNs never mutate. This is for testing senders.
 	const bool nullSenders = false;		//If true: senders only send s = q. Bypass ANNs. This is for testing receivers. Sender ANNs will drift.
 
-	const int nullHonestBeginG = 100000;	//If >0, let everyone evolve against null senders and null receivers for this many generations. Then let things evolve. This should start it at an honest equilibrium.
+	const int nullHonestBeginG = 210000;	//If >0, let everyone evolve against null senders and null receivers for this many generations. Then let things evolve. This should start it at an honest equilibrium.
 	//This may not be working - in earlier tests it only took <10 000 gens to get receivers honest.
 	//The way this has to work: Sender send normally but receiver behavior is null (Pr=s)
 	//Receivers get cues from 'fake' senders where s=q.
 	//After nullHonestBeginG generations, senders and receivers actually start interacting
 
-	const int Report_annVar = 10; //Export this many generations of ANN variable data. 0 for no report, 1 for only last generation
-	const int Report_annVar_N = 100;	//How many individuals do you want to report ann stats for? The highest fitness individuals will be reported
+	const int Report_annVar = 1; //Export this many generations of ANN variable data. 0 for no report, 1 for only last generation
+	const int Report_annVar_N = 1000;	//How many individuals do you want to report ann stats for? The highest fitness individuals will be reported
 	const bool Report_annInit = true;	//Do you want initial generation ann data?
 
-	const std::string dataFileName = "test_honest_start_smallN";
-	const std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
+	const std::string dataFileName = "make_honest_weights";
+
+	//const std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
+	const std::string dataFileFolder = "./";
+
 
 
 
@@ -162,7 +165,7 @@ int main() {
 	if (nullReceivers == true){
 		mut_rate_ann_R = 0.000;
 	}
-	//Random number generators and distributions
+
 	auto rng = std::default_random_engine {seed};
 	std::uniform_real_distribution<double> prob(0,1);
 	std::uniform_real_distribution<double> init_ann_dist(-std::abs(init_ann_range),std::abs(init_ann_range));
@@ -213,13 +216,13 @@ int main() {
 		for (int i = 0; i < N; i++){	//senders
 			std::array<double, 39> sender_ann; //Create ann for sender
 			if (complexInit == false){
-				for (int j = 0; j < size(sender_ann); j++){
+				for (int j = 0; j < sender_ann.size(); j++){
 					sender_ann[j] = init_ann_dist(rng);				//Create a random neural network for senders
 				}
 			} else if (complexInit==true){
 				bool annOkay = false;
 				while (annOkay == false){
-					for (int j = 0; j < size(sender_ann); j++){
+					for (int j = 0; j < sender_ann.size(); j++){
 						sender_ann[j] = init_ann_dist(rng);				//Create a random neural network for senders
 					}
 					//Now test the network and if it is complex enough, set annOkay to true
@@ -240,13 +243,13 @@ int main() {
 
 				std::array<double, 34> receiver_ann; //Create ann for receiver
 				if (complexInit == false){
-					for (int j = 0; j < size(receiver_ann); j++){		//Create a random neural network for receivers
+					for (int j = 0; j < receiver_ann.size(); j++){		//Create a random neural network for receivers
 						receiver_ann[j] = init_ann_dist(rng);
 					}
 				} else if (complexInit==true){
 					bool annOkay = false;
 					while (annOkay == false){
-						for (int j = 0; j < size(receiver_ann); j++){		//Create a random neural network for receivers
+						for (int j = 0; j < receiver_ann.size(); j++){		//Create a random neural network for receivers
 							receiver_ann[j] = init_ann_dist(rng);
 						}
 						//Now test the network and if it is complex enough, set annOkay to true
