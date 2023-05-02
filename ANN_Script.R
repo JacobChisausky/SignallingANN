@@ -91,11 +91,14 @@ senderANN_printSurface <- function(resolution, ANN_S){
   matrix <- as.matrix(data)
   
   p <- plot_ly(z = ~matrix, type = "surface")
+  
+  
   p <- layout(p, scene = list(xaxis = list(title = "s", 
                                            ticketmode = 'array',
                                            ticktext = round(as.numeric(slabs),2),
                                            tickvals = (as.numeric(slabs)*(ncol(matrix)-1)),
-                                           tickformat = '.2f'),
+                                           tickformat = '.2f',
+                                           autorange="reversed"),
                               yaxis = list(title = "q", 
                                            ticketmode = 'array',
                                            ticktext = round(as.numeric(qlabs),2),
@@ -168,42 +171,18 @@ receiverANN_mutate <- function(gen, mut_rate, mut_step, ANN_R){
 }#mutates an ANN gen number of times
 
 
-#Senders ####
+#Senders tests ####
 
 #testing the effect of mutations on random ANNs
 a<-generate_ANNs_randomComplex(1)
 senderANN_printSurface(10,a)
 
-a<-senderANN_mutate(100,0.01,0.01,a)
+a<-senderANN_mutate(10,0.01,0.05,a)
 senderANN_printSurface(10,a)
 
+# Receivers tests ####
 
-
-
-##Reading ANNs from file and displaying
-directory <- "C:/Users/owner/Documents/S4/Simulation_ANN"
-file <- "117_14_05_29_annVars_forR.csv"
-
-annFile <- read.csv(paste0(directory,"/",file))
-sFile <- subset(annFile,indType == "Sender")
-rFile <- subset(annFile,indType == "Receiver")[,-(41:45)]
-sEnd <- subset(sFile,gen==max(sFile$gen))
-rEnd <- subset(rFile,gen==max(rFile$gen))
-# Senders ####
-# 1, 2 looks like we should expect
-n<-2
-n_annS<-as.numeric(sEnd[n,7:45])
-
-senderANN_printSurface(10,senderANN_mutate(30,0.01,0.01,n_annS))
-
-
-
-
-# Receivers ####
-
-#R<-generate_ANNR_randomComplex(1)
-#a<-receiverPhenotype(100,generate_ANNR_randomComplex(1))
-
+# Investigating mutation sizes on receiver phenotypes
 for (j in 1:10){
 a<-generate_ANNR_randomComplex(1)
 d<-receiverPhenotype(100,a)
@@ -225,9 +204,69 @@ p<-ggplot(d_mut,aes(x=s,y=output)) +
 print(p)
 }
 
-#Real data - receivers
-n<-1
-n_annR<-as.numeric(rEnd[n,-(1:6)])
 
+##Read data ####
+directory <- "C:/Users/owner/Documents/S4/Simulation_ANN"
+file <- "117_14_05_29_annVars_forR.csv"  #null receivers - good
+file <- "117_18_33_44_annVars_null_Senders.CSV" #null senders - good
+#file <- "120_11_06_06_annVars_first_real_test.csv" #Pooling equilibrium - all signal, all respond
+file <- "120_17_55_35_annVars_first_real_test.csv"  #They are all sending signal 0 since it is tried first
+    #So - all signals are s = 0. This causes no decrease in survival.
+    #Why do receivers respond? Not responding should be the same as responding: payoff of q or 1-q will be the same
+    #Same problem as in other sim: If senders don't send, no inventive to respond
+        #If responders don't respond, no incentive to send.
+file <- "121_10_47_23_annVars_test_honest_start_smallN.csv"
+
+unique(annFile$gen)
+annFile <- read.csv(paste0(directory,"/",file))
+sFile <- subset(annFile,indType == "Sender")
+rFile <- subset(annFile,indType == "Receiver")[,-(41:45)]
+sEnd <- subset(sFile,gen==max(sFile$gen))
+rEnd <- subset(rFile,gen==max(rFile$gen))
+##
+
+unique(sFile$gen)
+sEnd <- subset(sFile,gen==unique(sFile$gen)[10])
+
+# Senders ####
+
+n<-2
+n_annS<-as.numeric(sEnd[n,7:45])
+senderANN_printSurface(20,n_annS)
+
+
+#Null Receiver analytical predictuon
+#prediction for null receivers
+data<-senderPhenotype(100,100,n_annS)
+pred<-function(x){
+  return( (1/(2+10*x))^(1/(1+10*x)) )
+}
+ggplot(data) +
+  geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2) + 
+  scale_color_viridis_c() +
+  theme_bw() +
+  geom_function(fun = pred, colour = "red", linewidth=3)
+
+
+#Real data - receivers
+unique(rFile$gen)
+rEnd <- subset(rFile,gen==100000)
+
+n<-6
+n_annR<-as.numeric(rEnd[n,-(1:6)])
+data<-receiverPhenotype(100,n_annR)
+
+ggplot(data,aes(x=s,y=output)) + geom_line(color="red",size=1.4) +
+  theme_bw() + ylim(0,1) + labs(y="Pr")
+
+dataAll<-data.frame()
+for (n in 1:100){
+n_annR<-as.numeric(rEnd[n,-(1:6)])
+data<-receiverPhenotype(100,n_annR)
+data$n<-n
+dataAll<-rbind(dataAll,data)
+}
+ggplot(dataAll,aes(x=s,y=output)) + geom_path(aes(group=n),alpha=0.1,size=.8) +
+  theme_bw() + ylim(0,1) + labs(y="Pr", title="100 individuals")
 
 

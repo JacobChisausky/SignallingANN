@@ -13,6 +13,7 @@
 #include <random>
 #include <ctime>
 #include <fstream>
+#include <string>
 
 #include "agents.h"
 //using namespace std;
@@ -40,7 +41,7 @@ double sender_fitness_function(bool response, double s, double q, double c, int 
 	//c is a coefficient that determines the effect of q on signal costs.
 	//Problem? If no responses are given, fitness is 0.
 
-	double fitness = ( (int(response) * (1 - std::pow(s,(1+ (c*q))) ) ) / interactionPartners );
+	double fitness = ( (int(response) * (1 - std::pow(s,(1+ (c*q))) ) ) / double(interactionPartners) );
 
 	return fitness;
 
@@ -66,7 +67,7 @@ int main() {
 
 	int seed = 123456789;
 	const double N = 1000;	//There will be N receivers and N senders. Stored as double for calculations
-	const int G = 100000;
+	const int G = 200000;
 
 	const double c = 10.0;		//This determines the relationship between sender quality and signal cost. Higher = stronger reduction of cost with quality. 0 = same cost for all signallers.
 
@@ -76,21 +77,29 @@ int main() {
 	double mut_rate_ann_R = 0.01;
 
 	const double mut_step_ann_S = 0.01;
-	const double mut_step_ann_R = 0.05;
+	const double mut_step_ann_R = 0.05;	//Try .05 and 0.01
 
+	//const bool send_0_first = true; //if true, a signal of s=0.0 is always tried first - so that 'no signal' is an acceptable strategy. What does GR think of this? Not implemented yet.
 	const int s_max = 10;			//The number of signals strengths tried before a signal of 0 is sent by default
 
 	const int interactionPartners = 10;	//How many interactions per generation does each signaller and receiver engage in?
 
 	const bool complexInit = true;		//If true, initial ANNs will not be allowed to be completely flat
 
-	const bool nullReceivers = true;	//If true: receivers all respond with Pr = s. Their ANNs never mutate. This is for testing senders.
+	const bool nullReceivers = false;	//If true: receivers all respond with Pr = s. Their ANNs never mutate. This is for testing senders.
+	const bool nullSenders = false;		//If true: senders only send s = q. Bypass ANNs. This is for testing receivers. Sender ANNs will drift.
+
+	const int nullHonestBeginG = 100000;	//If >0, let everyone evolve against null senders and null receivers for this many generations. Then let things evolve. This should start it at an honest equilibrium.
+	//This may not be working - in earlier tests it only took <10 000 gens to get receivers honest.
+	//The way this has to work: Sender send normally but receiver behavior is null (Pr=s)
+	//Receivers get cues from 'fake' senders where s=q.
+	//After nullHonestBeginG generations, senders and receivers actually start interacting
 
 	const int Report_annVar = 10; //Export this many generations of ANN variable data. 0 for no report, 1 for only last generation
 	const int Report_annVar_N = 100;	//How many individuals do you want to report ann stats for? The highest fitness individuals will be reported
 	const bool Report_annInit = true;	//Do you want initial generation ann data?
 
-	const std::string dataFileName = "forR";
+	const std::string dataFileName = "test_honest_start_smallN";
 	const std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
 
 
@@ -129,25 +138,22 @@ int main() {
 	std::string strTime = std::to_string(yday) + "_" +  hr + "_" + min + "_" + sec;
 	std::string str1 = dataFileFolder + "/" + strTime + "_annVars_" +  dataFileName + ".csv";
 	std::string str2 = dataFileFolder + "/" + strTime + "_params_" + dataFileName + ".csv";
-	std::string str3 = dataFileFolder + "/" + strTime + "_summaryStats_" + dataFileName + ".csv";
+	//std::string str3 = dataFileFolder + "/" + strTime + "_summaryStats_" + dataFileName + ".csv";
 
 	//Files to write to
 	std::ofstream annVars;
 	//	std::ofstream dataLog;
-	//	std::ofstream params;
+	std::ofstream params;
 	//	std::ofstream summaryStats;
 
 	annVars.open(str1);
 	//		dataLog.open(str1);
-	//		params.open(str2);
+	params.open(str2);
 	//Prepare output files
 	annVars << "rep,gen,indType,indNum,quality,fitness,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38";
 	//		dataLog << "rep,gen,ind,indType,sendType,strategy,alphaBeta,fitness";
-	//		params << "seed,N,G,c1,c2,v1,v2,w1,w2,w3,w4,m,interactionPartners,mutRateAlpha,mutRateBeta,mutRateStrategySender,mutRateStrategyReceiver,mutStepAlpha,mutStepBeta,initializationType,initStrategySender,initStrategyReceiver,initAlpha,initBeta,replicates,alphaBetaMutation,cauchyDist";
-	//		params << "\n" << to_string(seed) << "," << to_string(N) <<","<< to_string(G) <<","<< to_string(c1) <<","<< to_string(c2) <<","<< to_string(v1)<<","<<to_string(v2)<<","<<to_string(w1)<<","<<to_string(w2)<<","<<to_string(w3)<<","<<to_string(w4)<<","<<to_string(m)<<","<<to_string(interactionPartners)<<","<<to_string(mutRateAlpha)<<","<<to_string(mutRateBeta)<<","<<to_string(mutRateStrategySender)<<","<<to_string(mutRateStrategyReceiver)<<","<<to_string(mutStepAlpha)<<","<<to_string(mutStepBeta)<<","<<initializationType<<","<<to_string(initStrategySender)<<","<<to_string(initStrategyReceiver)<<","<<to_string(initAlpha)<<","<<to_string(initBeta)<<","<<to_string(replicates)<<","<<alphaBetaMutation<<","<<to_string(cauchyDist),"\n";
-	//		if (computeMeansInCpp == true){
-	//			summaryStats << "rep,gen,indType,stratNum,stratType,meanAlphaBeta,meanFit,expAlphaBeta,seed,N,G,c1,c2,v1,v2,w1,w2,w3,w4,m,interactionPartners,mutRateAlpha,mutRateBeta,mutRateStrategySender,mutRateStrategyReceiver,mutStepAlpha,mutStepBeta,initializationType,initStrategySender,initStrategyReceiver,initAlpha,initBeta,replicates,alphaBetaMutation,cauchyDist";
-	//		}
+	params << "replicates,k,seed,N,G,c,init_ann_range,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,s_max,interactionPartners,complexInit,nullReceivers,nullSenders,nullHonestBeginG,Report_annVar,Report_annVar_N,Report_annInit,dataFileName,dataFileFolder";
+	params << "\n"<<std::to_string(replicates)<<","<<std::to_string(k)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(c)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(s_max)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(complexInit)<<","<<std::to_string(nullReceivers)<<","<<std::to_string(nullSenders)<<","<<std::to_string(nullHonestBeginG)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<dataFileName<<","<<dataFileFolder;
 
 	//For k-selection tournament
 	std::array<int, k> tourn_arr;
@@ -311,37 +317,60 @@ int main() {
 					//Determine strength of signal sent by signaller
 					//Share for all individuals per generation? No - this could produce a generation with mostly strong signals, another with mostly weak, etc.
 					//vector<double> s_list();
-
-					//First - try s = 0
-					if (prob(rng) > S_cur.annS_output(0.0, q_cur)){    //If so, then signal of 0 is NOT sent. Go on to pick more signals. If not (prob < ann output), then keep signal = 0;
-						int s_num = 0;
-						while (s_num < s_max){
-							s_num++;
-							double s_try = prob(rng);
-							if (prob(rng) < S_cur.annS_output(s_try, q_cur)){
-								s = s_try;
-								s_num = s_max;
-							}
-						}	//If we don't pick a signal after s_max tries, keep at s = 0
-					}	//By now, s is (0,1)
+					if (nullSenders == true){	//Null sender behavior ONLY FOR RECEIVERS xxx
+						//They are not actually coevolving yet
+						s = q_cur;
+					} else {
+						//First - try s = 0
+						if (prob(rng) > S_cur.annS_output(0.0, q_cur)){    //If so, then signal of 0 is NOT sent. Go on to pick more signals. If not (prob < ann output), then keep signal = 0;
+							int s_num = 0;
+							while (s_num < s_max){
+								s_num++;
+								double s_try = prob(rng);
+								if (prob(rng) < S_cur.annS_output(s_try, q_cur)){
+									s = s_try;
+									s_num = s_max;
+								}
+							}	//If we don't pick a signal after s_max tries, keep at s = 0
+						}	//By now, s is (0,1)
+					}
 
 					//Determine cost of signal
 					//double cost_S = cost_function(s, q_cur, cost_function_coeff);
 
 					//Fitness = benefit - cost...? additive not multiplicative - is that okay? Talk to GR about it.
 
-					//Now check receiver ANN - do they respond to signal?
+					//Null receiver behavior. Receiver gets payoff from response. Sender gets payoff from nullResponse
 					bool response = 0;
-					if (prob(rng) < R_cur.annR_output(s)){    //If so - respond to signal
-						response = 1;
+					bool nullResponse = 0;
+					if (g < nullHonestBeginG){
+						if (prob(rng) < s){    //Does receiver respond to signal? Chance is equal to s for NULL RECEIVERS
+							nullResponse = 1;		//null response is response for SENDER
+						}
+						if (prob(rng) < R_cur.annR_output(q_cur)){    //Receiver chooses to respond to signal of strength q_cur. NULL SENDERS
+							response = 1;			//response is response for RECEIVER
+						}
+					} else {
+						//Now check receiver ANN - do they respond to signal?
+							//For real evolution - not honest start
+						if (prob(rng) < R_cur.annR_output(s)){    //If so - respond to signal
+							response = 1;
+						}
 					}
+
 
 					//Benefit to sender
 					//double benefit_S = sender_benefit_function(response, q_cur, sender_benefit_option);
 
 					//Payoffs to senders and receivers
 					double payoffReceiver = receiver_benefit_function(response, q_cur);
-					double payoffSender = sender_fitness_function(response, s, q_cur, c, interactionPartners);
+					double payoffSender = sender_fitness_function(nullResponse, s, q_cur, c, interactionPartners);
+
+					if (g < nullHonestBeginG){
+						//
+						payoffReceiver = receiver_benefit_function(response, q_cur);
+						payoffSender = sender_fitness_function(nullResponse, s, q_cur, c, interactionPartners);
+					}
 
 					//Fitness changes
 					SenderPopulation[nullVecS[j]].change_fitness(payoffSender);
@@ -504,105 +533,6 @@ int main() {
 				}
 			}
 
-			/*
-				if (g%reportFreq == 0){
-					if (coutReport == 1){
-						for (int i = 0; i < 20; i++){
-							cout << SenderPopulation[i].Strategy << " " << SenderPopulation[i].Alpha << " " << SenderPopulation[i].fitness << " | ";
-						}
-						cout << endl;
-						for (int i = 0; i < 20; i++){
-							cout << ReceiverPopulation[i].Strategy << " " << ReceiverPopulation[i].Beta << " " << ReceiverPopulation[i].fitness << " | ";
-						}
-						cout << "\n--------------------------\n";
-					}
-
-					if (computeMeansInCpp == false){
-
-						for (int i = 0; i < N; i++){
-							dataLog << "\n" << rep << "," << g << "," << i << ",Sender," << SenderPopulation[i].Type << "," << SenderPopulation[i].Strategy << "," << SenderPopulation[i].Alpha << "," << SenderPopulation[i].fitness;
-						}
-
-						for (int i = 0; i < N; i++){
-							dataLog << "\n" << rep << "," << g << "," << i << ",Receiver,na," << ReceiverPopulation[i].Strategy << "," << ReceiverPopulation[i].Beta << "," << ReceiverPopulation[i].fitness;
-						}
-					} else {
-						//Compute means
-						// rep, gen, indType, stratNum, stratType, meanAlphaBeta, meanFit, expAlphaBeta, fileNumber
-						int numSS1 = 0;
-						int numSS2 = 0;
-						int numSS3 = 0;
-						int numRS1 = 0;
-						int numRS2 = 0;
-						int numRS3 = 0;
-
-						long double totalAlpha = 0.0;
-						long double totalBeta = 0.0;
-
-						long double totalFitSS1 = 0.0;
-						long double totalFitSS2 = 0.0;
-						long double totalFitSS3 = 0.0;
-
-						long double totalFitRS1 = 0.0;
-						long double totalFitRS2 = 0.0;
-						long double totalFitRS3 = 0.0;
-
-						for (int i = 0; i < N; i++){
-							if (SenderPopulation[i].Strategy == 1){
-								numSS1 += 1;
-								totalFitSS1 += SenderPopulation[i].fitness;
-							} else if (SenderPopulation[i].Strategy == 2){
-								numSS2 += 1;
-								totalFitSS2 += SenderPopulation[i].fitness;
-							} else {
-								numSS3 += 1;
-								totalFitSS3 += SenderPopulation[i].fitness;
-							}
-							if (ReceiverPopulation[i].Strategy == 1){
-								numRS1 += 1;
-								totalFitRS1 += ReceiverPopulation[i].fitness;
-							} else if (ReceiverPopulation[i].Strategy == 2){
-								numRS2 += 1;
-								totalFitRS2 += ReceiverPopulation[i].fitness;
-							} else {
-								numRS3 += 1;
-								totalFitRS3 += ReceiverPopulation[i].fitness;
-							}
-
-							totalAlpha += SenderPopulation[i].Alpha;
-							totalBeta += ReceiverPopulation[i].Beta;
-
-							//totalFitS += SenderPopulation[i].fitness;
-							//totalFitR += ReceiverPopulation[i].fitness;
-						}
-
-						double meanAlpha = totalAlpha/N;
-						double meanBeta = totalBeta/N;
-
-						//double meanFitS = totalFitS/N;
-						//double meanFitR = totalFitR/N;
-
-						double meanFitSS1 = totalFitSS1/double(numSS1);
-						double meanFitSS2 = totalFitSS2/double(numSS2);
-						double meanFitSS3 = totalFitSS3/double(numSS3);
-
-						double meanFitRS1 = totalFitRS1/double(numRS1);
-						double meanFitRS2 = totalFitRS2/double(numRS2);
-						double meanFitRS3 = totalFitRS3/double(numRS3);
-
-
-						//                      rep          gen    indType    stratNum    stratType   meanAlphaBeta         meanFit         expAlphaBeta | Params |
-				//		summaryStats << "\n" << rep << "," << g << ",Sender," << numSS1 << ",strat1," << meanAlpha << "," << meanFitSS1 << "," << expAlpha  <<","<< seed<<","<<N<<","<<G<<","<<c1<<","<<c2<<","<<v1<<","<<v2<<","<<w1<<","<<w2<<","<<w3<<","<<w4<<","<<m<<","<<interactionPartners<<","<<mutRateAlpha<<","<<mutRateBeta<<","<<mutRateStrategySender<<","<<mutRateStrategyReceiver<<","<<mutStepAlpha<<","<<mutStepBeta<<","<<initializationType<<","<<initStrategySender<<","<<initStrategyReceiver<<","<<initAlpha<<","<<initBeta<<","<<replicates<<","<<alphaBetaMutation<<","<<cauchyDist;
-				//		summaryStats << "\n" << rep << "," << g << ",Sender," << numSS2 << ",strat2," << meanAlpha << "," << meanFitSS2 << "," << expAlpha  <<","<< seed<<","<<N<<","<<G<<","<<c1<<","<<c2<<","<<v1<<","<<v2<<","<<w1<<","<<w2<<","<<w3<<","<<w4<<","<<m<<","<<interactionPartners<<","<<mutRateAlpha<<","<<mutRateBeta<<","<<mutRateStrategySender<<","<<mutRateStrategyReceiver<<","<<mutStepAlpha<<","<<mutStepBeta<<","<<initializationType<<","<<initStrategySender<<","<<initStrategyReceiver<<","<<initAlpha<<","<<initBeta<<","<<replicates<<","<<alphaBetaMutation<<","<<cauchyDist;
-				//		summaryStats << "\n" << rep << "," << g << ",Sender," << numSS3 << ",strat3," << meanAlpha << "," << meanFitSS3 << "," << expAlpha  <<","<< seed<<","<<N<<","<<G<<","<<c1<<","<<c2<<","<<v1<<","<<v2<<","<<w1<<","<<w2<<","<<w3<<","<<w4<<","<<m<<","<<interactionPartners<<","<<mutRateAlpha<<","<<mutRateBeta<<","<<mutRateStrategySender<<","<<mutRateStrategyReceiver<<","<<mutStepAlpha<<","<<mutStepBeta<<","<<initializationType<<","<<initStrategySender<<","<<initStrategyReceiver<<","<<initAlpha<<","<<initBeta<<","<<replicates<<","<<alphaBetaMutation<<","<<cauchyDist;
-				//		summaryStats << "\n" << rep << "," << g << ",Receiver," << numRS1 << ",strat1," << meanBeta << "," << meanFitRS1 << "," << expBeta  <<","<< seed<<","<<N<<","<<G<<","<<c1<<","<<c2<<","<<v1<<","<<v2<<","<<w1<<","<<w2<<","<<w3<<","<<w4<<","<<m<<","<<interactionPartners<<","<<mutRateAlpha<<","<<mutRateBeta<<","<<mutRateStrategySender<<","<<mutRateStrategyReceiver<<","<<mutStepAlpha<<","<<mutStepBeta<<","<<initializationType<<","<<initStrategySender<<","<<initStrategyReceiver<<","<<initAlpha<<","<<initBeta<<","<<replicates<<","<<alphaBetaMutation<<","<<cauchyDist;
-				//		summaryStats << "\n" << rep << "," << g << ",Receiver," << numRS2 << ",strat2," << meanBeta << "," << meanFitRS2 << "," << expBeta  <<","<< seed<<","<<N<<","<<G<<","<<c1<<","<<c2<<","<<v1<<","<<v2<<","<<w1<<","<<w2<<","<<w3<<","<<w4<<","<<m<<","<<interactionPartners<<","<<mutRateAlpha<<","<<mutRateBeta<<","<<mutRateStrategySender<<","<<mutRateStrategyReceiver<<","<<mutStepAlpha<<","<<mutStepBeta<<","<<initializationType<<","<<initStrategySender<<","<<initStrategyReceiver<<","<<initAlpha<<","<<initBeta<<","<<replicates<<","<<alphaBetaMutation<<","<<cauchyDist;
-				//		summaryStats << "\n" << rep << "," << g << ",Receiver," << numRS3 << ",strat3," << meanBeta << "," << meanFitRS3 << "," << expBeta  <<","<< seed<<","<<N<<","<<G<<","<<c1<<","<<c2<<","<<v1<<","<<v2<<","<<w1<<","<<w2<<","<<w3<<","<<w4<<","<<m<<","<<interactionPartners<<","<<mutRateAlpha<<","<<mutRateBeta<<","<<mutRateStrategySender<<","<<mutRateStrategyReceiver<<","<<mutStepAlpha<<","<<mutStepBeta<<","<<initializationType<<","<<initStrategySender<<","<<initStrategyReceiver<<","<<initAlpha<<","<<initBeta<<","<<replicates<<","<<alphaBetaMutation<<","<<cauchyDist;
-
-						//Write means to summaryStats log.
-					}
-				}
-			 */
 
 			//Replace Parents with Offspring
 			SenderPopulation.swap(SenderOffspring);
@@ -623,7 +553,8 @@ int main() {
 	}//End replicate loop
 
 	//	dataLog.close();
-	//	params.close();
+	params.close();
+	annVars.close();
 	//	summaryStats.close();
 
 
