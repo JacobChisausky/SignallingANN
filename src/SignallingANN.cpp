@@ -1,9 +1,7 @@
 //============================================================================
 // Name        : SignallingANN.cpp
 // Author      : Jacob Chisausky
-// Version     :
-// Copyright   : Your copyright notice
-// Description : Hello World in C++, Ansi-style
+// Description : Signalling ANN
 //============================================================================
 
 #include <iostream>
@@ -15,6 +13,7 @@
 #include <fstream>
 #include <string>
 
+#include "parameters.h"
 #include "agents.h"
 //using namespace std;
 
@@ -59,6 +58,45 @@ double receiver_benefit_function(bool response, double q){
 	return (double(response)*q  +  -1*(double(response) - 1.0)*(1-q) );
 }
 
+//json version
+int main(int argc, char* argv[]){
+	// getting params from the parameter file via json
+
+	std::cout << argv[1] << std::endl;
+
+	nlohmann::json json_in;
+	std::ifstream is(argv[1]);   //assumes that the file name is given as a parameter in the command line
+	is >> json_in;
+	parameters params = json_in.get<parameters>();
+
+	int replicates = params.replicates;
+	int k = params.k;
+	//constexpr int k = k1;
+	int seed = params.seed;
+	double N = params.N;
+	int G = params.G;
+	double c = params.c;
+	double init_ann_range = params.init_ann_range;
+	double mut_rate_ann_S = params.mut_rate_ann_S;
+	double mut_rate_ann_R = params.mut_rate_ann_R;
+	double mut_step_ann_S = params.mut_step_ann_S;
+	double mut_step_ann_R = params.mut_step_ann_R;
+	bool send_0_first = params.send_0_first;
+	int s_max = params.s_max;
+	int interactionPartners = params.interactionPartners;
+	bool complexInit = params.complexInit;
+	bool nullReceivers = params.nullReceivers;
+	bool nullSenders = params.nullSenders;
+	int nullHonestBeginG = params.nullHonestBeginG;
+	int Report_annVar = params.Report_annVar;
+	int Report_annVar_N = params.Report_annVar_N;
+	bool Report_annInit = params.Report_annInit;
+	std::string dataFileName = params.dataFileName;
+	std::string dataFileFolder = params.dataFileFolder;
+
+	//const std::string dataFileFolder = "./";
+
+/*
 int main() {
 
 	const int replicates = 1;
@@ -70,7 +108,6 @@ int main() {
 	const int G = 200000;
 
 	const double c = 10.0;		//This determines the relationship between sender quality and signal cost. Higher = stronger reduction of cost with quality. 0 = same cost for all signallers.
-
 	const double init_ann_range = 1.0;	//ANN stats will be initialized randomly + or - this value
 
 	const double mut_rate_ann_S = 0.01;
@@ -79,7 +116,7 @@ int main() {
 	const double mut_step_ann_S = 0.01;
 	const double mut_step_ann_R = 0.05;	//Try .05 and 0.01
 
-	//const bool send_0_first = true; //if true, a signal of s=0.0 is always tried first - so that 'no signal' is an acceptable strategy. What does GR think of this? Not implemented yet.
+	const bool send_0_first = true; //if true, a signal of s=0.0 is always tried first - so that 'no signal' is an acceptable strategy. What does GR think of this? Not implemented yet.
 	const int s_max = 10;			//The number of signals strengths tried before a signal of 0 is sent by default
 
 	const int interactionPartners = 10;	//How many interactions per generation does each signaller and receiver engage in?
@@ -103,7 +140,7 @@ int main() {
 
 	const std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
 	//const std::string dataFileFolder = "./";
-
+*/
 
 
 
@@ -146,20 +183,25 @@ int main() {
 	//Files to write to
 	std::ofstream annVars;
 	//	std::ofstream dataLog;
-	std::ofstream params;
+	std::ofstream paramFile;
 	//	std::ofstream summaryStats;
 
 	annVars.open(str1);
 	//		dataLog.open(str1);
-	params.open(str2);
+	paramFile.open(str2);
 	//Prepare output files
 	annVars << "rep,gen,indType,indNum,quality,fitness,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38";
 	//		dataLog << "rep,gen,ind,indType,sendType,strategy,alphaBeta,fitness";
-	params << "replicates,k,seed,N,G,c,init_ann_range,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,s_max,interactionPartners,complexInit,nullReceivers,nullSenders,nullHonestBeginG,Report_annVar,Report_annVar_N,Report_annInit,dataFileName,dataFileFolder";
-	params << "\n"<<std::to_string(replicates)<<","<<std::to_string(k)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(c)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(s_max)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(complexInit)<<","<<std::to_string(nullReceivers)<<","<<std::to_string(nullSenders)<<","<<std::to_string(nullHonestBeginG)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<dataFileName<<","<<dataFileFolder;
+	paramFile << "replicates,k,seed,N,G,c,init_ann_range,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,s_max,send_0_first,interactionPartners,complexInit,nullReceivers,nullSenders,nullHonestBeginG,Report_annVar,Report_annVar_N,Report_annInit,dataFileName,dataFileFolder";
+	paramFile << "\n"<<std::to_string(replicates)<<","<<std::to_string(k)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(c)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(s_max)<<","<<std::to_string(send_0_first)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(complexInit)<<","<<std::to_string(nullReceivers)<<","<<std::to_string(nullSenders)<<","<<std::to_string(nullHonestBeginG)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<dataFileName<<","<<dataFileFolder;
 
 	//For k-selection tournament
-	std::array<int, k> tourn_arr;
+	//std::array<int, k> tourn_arr;
+
+	std::vector<int> tourn_arr;
+	for (int i = 0; i < k; i++){
+		tourn_arr.push_back(0);
+	}
 
 	//Disable mutations if using nullReceivers
 	if (nullReceivers == true){
@@ -325,7 +367,7 @@ int main() {
 						s = q_cur;
 					} else {
 						//First - try s = 0
-						if (prob(rng) > S_cur.annS_output(0.0, q_cur)){    //If so, then signal of 0 is NOT sent. Go on to pick more signals. If not (prob < ann output), then keep signal = 0;
+						if (send_0_first == true & prob(rng) > S_cur.annS_output(0.0, q_cur)){    //If so, then signal of 0 is NOT sent. Go on to pick more signals. If not (prob < ann output), then keep signal = 0;
 							int s_num = 0;
 							while (s_num < s_max){
 								s_num++;
@@ -335,7 +377,17 @@ int main() {
 									s_num = s_max;
 								}
 							}	//If we don't pick a signal after s_max tries, keep at s = 0
-						}	//By now, s is (0,1)
+						} else { //don't send 0 first
+							int s_num = 0;
+							while (s_num < s_max){
+								s_num++;
+								double s_try = prob(rng);
+								if (prob(rng) < S_cur.annS_output(s_try, q_cur)){
+									s = s_try;
+									s_num = s_max;
+								}
+							}	//If we don't pick a signal after s_max tries, keep at s = 0
+						}
 					}
 
 					//Determine cost of signal
@@ -355,7 +407,7 @@ int main() {
 						}
 					} else {
 						//Now check receiver ANN - do they respond to signal?
-							//For real evolution - not honest start
+						//For real evolution - not honest start
 						if (prob(rng) < R_cur.annR_output(s)){    //If so - respond to signal
 							response = 1;
 						}
@@ -556,7 +608,7 @@ int main() {
 	}//End replicate loop
 
 	//	dataLog.close();
-	params.close();
+	paramFile.close();
 	annVars.close();
 	//	summaryStats.close();
 
