@@ -58,6 +58,11 @@ double receiver_benefit_function(bool response, double q){
 	return (double(response)*q  +  -1*(double(response) - 1.0)*(1-q) );
 }
 
+//Benefit function for selecting null receivers where Pr = s
+double receiver_benefit_function_PrEqualsS(double Pr, double s){
+	return (1.0 - std::abs(Pr-s));
+}
+
 //json version
 int main(int argc, char* argv[]){
 	// getting params from the parameter file via json
@@ -96,7 +101,7 @@ int main(int argc, char* argv[]){
 
 	//const std::string dataFileFolder = "./";
 
-/*
+	/*
 int main() {
 
 	const int replicates = 1;
@@ -140,11 +145,13 @@ int main() {
 
 	const std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
 	//const std::string dataFileFolder = "./";
-*/
-
+	 */
 
 
 	//_________End parameter input
+
+	//Get ANNs from .csv
+
 
 	//Reports
 	int ReportFreq_annVar = 0;
@@ -396,21 +403,30 @@ int main() {
 					//Fitness = benefit - cost...? additive not multiplicative - is that okay? Talk to GR about it.
 
 					//Null receiver behavior. Receiver gets payoff from response. Sender gets payoff from nullResponse
+					double payoffReceiver = -1.0;
 					bool response = 0;
 					bool nullResponse = 0;
 					if (g < nullHonestBeginG){
-						if (prob(rng) < s){    //Does receiver respond to signal? Chance is equal to s for NULL RECEIVERS
-							nullResponse = 1;		//null response is response for SENDER
-						}
-						if (prob(rng) < R_cur.annR_output(q_cur)){    //Receiver chooses to respond to signal of strength q_cur. NULL SENDERS
-							response = 1;			//response is response for RECEIVER
-						}
+						double Pr = R_cur.annR_output(s);	//Use different benefit function for now to make Pr = s for receivers
+						payoffReceiver = receiver_benefit_function_PrEqualsS(Pr, s);
+
+						//old
+						//if (prob(rng) < s){    //Does receiver respond to signal? Chance is equal to s for NULL RECEIVERS
+						//	nullResponse = 1;		//null response is response for SENDER
+						//}
+
+						//double sig = std::pow((1/(2+c*q_cur)),(1/(1+c*q_cur)));
+						//old
+						//if (prob(rng) < R_cur.annR_output(s)){
+						//	response = 1;			//response is response for receiver fitness
+						//}
 					} else {
 						//Now check receiver ANN - do they respond to signal?
 						//For real evolution - not honest start
 						if (prob(rng) < R_cur.annR_output(s)){    //If so - respond to signal
 							response = 1;
 						}
+						payoffReceiver = receiver_benefit_function(response, q_cur);
 					}
 
 
@@ -418,12 +434,10 @@ int main() {
 					//double benefit_S = sender_benefit_function(response, q_cur, sender_benefit_option);
 
 					//Payoffs to senders and receivers
-					double payoffReceiver = receiver_benefit_function(response, q_cur);
-					double payoffSender = sender_fitness_function(nullResponse, s, q_cur, c, interactionPartners);
+					double payoffSender = sender_fitness_function(response, s, q_cur, c, interactionPartners);
 
 					if (g < nullHonestBeginG){
-						//
-						payoffReceiver = receiver_benefit_function(response, q_cur);
+						//payoffReceiver = receiver_benefit_function(response, q_cur); //I moved this up
 						payoffSender = sender_fitness_function(nullResponse, s, q_cur, c, interactionPartners);
 					}
 
