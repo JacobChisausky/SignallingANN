@@ -19,6 +19,7 @@ struct parameters
 	bool	send_0_first	= true;
 	int	s_max	= 10;
 	int	interactionPartners	= 10;
+	int fitnessFunction = 0;	//0 = additive. 1 = multiplicative
 	bool	complexInit	= true;
 	bool	nullReceivers	= false;
 	bool	nullSenders	= false;

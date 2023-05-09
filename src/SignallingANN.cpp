@@ -28,24 +28,17 @@
 //}
 
 //Benefit function for senders
-double sender_fitness_function(bool response, double s, double q, double c, int interactionPartners){
+double sender_fitness_function_Additive(bool response, double s, double q, double c, int interactionPartners){
 	//This will be ran after each interaction and summed for all interaction. Each value is divided by interactionPartners to keep consistency across replicates - max fitness = 1, min = 0
 
 	//This is multiplicative: fitness = benefits * survival probability
-	//Where survival probability is 1 - costs
+	//double fitness = ( (int(response) * (1 - std::pow(s,(1+ (c*q))) ) ) / double(interactionPartners) );
 
-	//Benefits per interaction: 1 if receive response, 0 if not
-	//Survival prob: 1 - s^1+cq
-	//Follows Biernaskie et al 2014
-	//c is a coefficient that determines the effect of q on signal costs.
-	//Problem? If no responses are given, fitness is 0.
-
-	double fitness = ( (int(response) * (1 - std::pow(s,(1+ (c*q))) ) ) / double(interactionPartners) );
+	//Additive fitness
+	double cost = s * c * (1 - q);
+	double fitness = (double(response) - cost) / double(interactionPartners);
 
 	return fitness;
-
-	//Write a version which ignores senders and just is grafen-esuqe with reprod success = s/sbar ?
-
 }
 
 //Benefit function for receivers
@@ -89,6 +82,7 @@ int main(int argc, char* argv[]){
 	bool send_0_first = params.send_0_first;
 	int s_max = params.s_max;
 	int interactionPartners = params.interactionPartners;
+	int fitnessFunction = params.fitnessFunction; //0 = additive. 1 = multiplicative
 	bool complexInit = params.complexInit;
 	bool nullReceivers = params.nullReceivers;
 	bool nullSenders = params.nullSenders;
@@ -98,59 +92,16 @@ int main(int argc, char* argv[]){
 	bool Report_annInit = params.Report_annInit;
 	std::string dataFileName = params.dataFileName;
 	std::string dataFileFolder = params.dataFileFolder;
-
 	//const std::string dataFileFolder = "./";
-
-	/*
-int main() {
-
-	const int replicates = 1;
-
-	const int k = 2;
-
-	int seed = time(0);		//This won't work if we send many jobs at once but for now it's okay
-	const double N = 1000;	//There will be N receivers and N senders. Stored as double for calculations
-	const int G = 200000;
-
-	const double c = 10.0;		//This determines the relationship between sender quality and signal cost. Higher = stronger reduction of cost with quality. 0 = same cost for all signallers.
-	const double init_ann_range = 1.0;	//ANN stats will be initialized randomly + or - this value
-
-	const double mut_rate_ann_S = 0.01;
-	double mut_rate_ann_R = 0.01;
-
-	const double mut_step_ann_S = 0.01;
-	const double mut_step_ann_R = 0.05;	//Try .05 and 0.01
-
-	const bool send_0_first = true; //if true, a signal of s=0.0 is always tried first - so that 'no signal' is an acceptable strategy. What does GR think of this? Not implemented yet.
-	const int s_max = 10;			//The number of signals strengths tried before a signal of 0 is sent by default
-
-	const int interactionPartners = 10;	//How many interactions per generation does each signaller and receiver engage in?
-
-	const bool complexInit = true;		//If true, initial ANNs will not be allowed to be completely flat
-
-	const bool nullReceivers = false;	//If true: receivers all respond with Pr = s. Their ANNs never mutate. This is for testing senders.
-	const bool nullSenders = false;		//If true: senders only send s = q. Bypass ANNs. This is for testing receivers. Sender ANNs will drift.
-
-	const int nullHonestBeginG = 210000;	//If >0, let everyone evolve against null senders and null receivers for this many generations. Then let things evolve. This should start it at an honest equilibrium.
-	//This may not be working - in earlier tests it only took <10 000 gens to get receivers honest.
-	//The way this has to work: Sender send normally but receiver behavior is null (Pr=s)
-	//Receivers get cues from 'fake' senders where s=q.
-	//After nullHonestBeginG generations, senders and receivers actually start interacting
-
-	const int Report_annVar = 1; //Export this many generations of ANN variable data. 0 for no report, 1 for only last generation
-	const int Report_annVar_N = 1000;	//How many individuals do you want to report ann stats for? The highest fitness individuals will be reported
-	const bool Report_annInit = true;	//Do you want initial generation ann data?
-
-	const std::string dataFileName = "make_honest_weights";
-
-	const std::string dataFileFolder = "C:/Users/owner/Documents/S4/Simulation_ANN";
-	//const std::string dataFileFolder = "./";
-	 */
 
 
 	//_________End parameter input
 
-	//Get ANNs from .csv
+	if (fitnessFunction == 1){
+		c = 1.0;	//Only accept c = 1.0 for multiplicative fitness.
+	}
+
+	//Get ANNs from .csv eventually for honest start?
 
 
 	//Reports
@@ -199,8 +150,8 @@ int main() {
 	//Prepare output files
 	annVars << "rep,gen,indType,indNum,quality,fitness,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38";
 	//		dataLog << "rep,gen,ind,indType,sendType,strategy,alphaBeta,fitness";
-	paramFile << "replicates,k,seed,N,G,c,init_ann_range,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,s_max,send_0_first,interactionPartners,complexInit,nullReceivers,nullSenders,nullHonestBeginG,Report_annVar,Report_annVar_N,Report_annInit,dataFileName,dataFileFolder";
-	paramFile << "\n"<<std::to_string(replicates)<<","<<std::to_string(k)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(c)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(s_max)<<","<<std::to_string(send_0_first)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(complexInit)<<","<<std::to_string(nullReceivers)<<","<<std::to_string(nullSenders)<<","<<std::to_string(nullHonestBeginG)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<dataFileName<<","<<dataFileFolder;
+	paramFile << "replicates,k,seed,N,G,c,init_ann_range,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,s_max,send_0_first,interactionPartners,fitnessFunction,complexInit,nullReceivers,nullSenders,nullHonestBeginG,Report_annVar,Report_annVar_N,Report_annInit,dataFileName,dataFileFolder";
+	paramFile << "\n"<<std::to_string(replicates)<<","<<std::to_string(k)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(c)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(s_max)<<","<<std::to_string(send_0_first)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(fitnessFunction)<<","<<std::to_string(complexInit)<<","<<std::to_string(nullReceivers)<<","<<std::to_string(nullSenders)<<","<<std::to_string(nullHonestBeginG)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<dataFileName<<","<<dataFileFolder;
 
 	//For k-selection tournament
 	//std::array<int, k> tourn_arr;
@@ -228,7 +179,6 @@ int main() {
 	//Quality distribution
 	//Only flat for now..
 	std::uniform_real_distribution<double> qual_dist(0,1);
-	//Just use prob(rng) to assign quality
 
 	//Vector used for drawing random numbers from 0 to N-1 without replacement
 	std::vector<int> nullVecS;
@@ -241,13 +191,6 @@ int main() {
 	for (int i = 0; i < N; i++){
 		nullVecR.push_back(i);
 	}
-
-	//Parameterized relationships - cost, benefit, etc...
-	//1. Signal costs
-	//2. Sender benefits (start flat)
-	//3. quality distribution (start flat)
-	//4. Receiver benefits?
-
 
 	//Start replicate loop
 	for (int rep = 1; rep <= replicates; rep++){
@@ -369,7 +312,7 @@ int main() {
 					//Determine strength of signal sent by signaller
 					//Share for all individuals per generation? No - this could produce a generation with mostly strong signals, another with mostly weak, etc.
 					//vector<double> s_list();
-					if (nullSenders == true){	//Null sender behavior ONLY FOR RECEIVERS xxx
+					if (nullSenders == true){	//Null sender behavior ONLY FOR RECEIVERS
 						//They are not actually coevolving yet
 						s = q_cur;
 					} else {
@@ -397,30 +340,16 @@ int main() {
 						}
 					}
 
-					//Determine cost of signal
-					//double cost_S = cost_function(s, q_cur, cost_function_coeff);
-
-					//Fitness = benefit - cost...? additive not multiplicative - is that okay? Talk to GR about it.
-
-					//Null receiver behavior. Receiver gets payoff from response. Sender gets payoff from nullResponse
 					double payoffReceiver = -1.0;
 					bool response = 0;
 					bool nullResponse = 0;
-					if (g < nullHonestBeginG){
+					if (g < nullHonestBeginG){ //Null receiver behavior. Receiver gets payoff from response. Sender gets payoff from nullResponse
 						double Pr = R_cur.annR_output(s);	//Use different benefit function for now to make Pr = s for receivers
-						payoffReceiver = receiver_benefit_function_PrEqualsS(Pr, s);
-
-						//old
-						//if (prob(rng) < s){    //Does receiver respond to signal? Chance is equal to s for NULL RECEIVERS
-						//	nullResponse = 1;		//null response is response for SENDER
-						//}
-
-						//double sig = std::pow((1/(2+c*q_cur)),(1/(1+c*q_cur)));
-						//old
-						//if (prob(rng) < R_cur.annR_output(s)){
-						//	response = 1;			//response is response for receiver fitness
-						//}
-					} else {
+						if (prob(rng) < s){    //Does NULL receiver respond to signal?
+							nullResponse = 1;		//null response is response for SENDER
+						}
+						payoffReceiver = receiver_benefit_function_PrEqualsS(Pr, s);	//Fitness function doesn't matter for this - this is just to get receiver phenotype we want
+					} else {	//Real receiver behavior
 						//Now check receiver ANN - do they respond to signal?
 						//For real evolution - not honest start
 						if (prob(rng) < R_cur.annR_output(s)){    //If so - respond to signal
@@ -429,21 +358,49 @@ int main() {
 						payoffReceiver = receiver_benefit_function(response, q_cur);
 					}
 
+					//Receiver fitness
+					ReceiverPopulation[nullVecR[j]].change_fitness(payoffReceiver);
 
 					//Benefit to sender
-					//double benefit_S = sender_benefit_function(response, q_cur, sender_benefit_option);
+					//Now - fitnessFunction (additive = 0, multiplicative = 1) matters
 
-					//Payoffs to senders and receivers
-					double payoffSender = sender_fitness_function(response, s, q_cur, c, interactionPartners);
+					if (fitnessFunction == 0){ //Additive fitness
+						double payoffSender = 0.0;
+						if (g < nullHonestBeginG){ //Null behavior
+							payoffSender = sender_fitness_function_Additive(nullResponse, s, q_cur, c, interactionPartners);
+						} else { //not null
+							payoffSender = sender_fitness_function_Additive(response, s, q_cur, c, interactionPartners);
+						}
+						//Fitness change
+						SenderPopulation[nullVecS[j]].change_fitness(payoffSender);
 
-					if (g < nullHonestBeginG){
-						//payoffReceiver = receiver_benefit_function(response, q_cur); //I moved this up
-						payoffSender = sender_fitness_function(nullResponse, s, q_cur, c, interactionPartners);
+					} else { //Multiplicative fitness
+						//Up to the last interaction, just sum benefits and costs. Then calculate fitness in last interaction
+						if (g >= nullHonestBeginG){ //not null
+							if (i < interactionPartners - 1){
+								SenderPopulation[nullVecS[j]].incrementBenefit(response);
+								SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
+							} else {
+								SenderPopulation[nullVecS[j]].incrementBenefit(response);
+								SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
+
+								//Calculate fitness
+								SenderPopulation[nullVecS[j]].setMultFitness(interactionPartners);
+							}
+
+						} else { //Null behavior
+							if (i < interactionPartners - 1){
+								SenderPopulation[nullVecS[j]].incrementBenefit(nullResponse);
+								SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
+							} else {
+								SenderPopulation[nullVecS[j]].incrementBenefit(nullResponse);
+								SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
+
+								//Calculate fitness
+								SenderPopulation[nullVecS[j]].setMultFitness(interactionPartners);
+							}
+						}
 					}
-
-					//Fitness changes
-					SenderPopulation[nullVecS[j]].change_fitness(payoffSender);
-					ReceiverPopulation[nullVecR[j]].change_fitness(payoffReceiver);
 
 				}//End loop for this individual
 
@@ -451,13 +408,6 @@ int main() {
 			//Now all fitnesses have been determined.
 
 			//k-tournament selection
-			//First, pick k individuals (k=2)
-			//Pick *with replacement*
-			//Determine highest fitness one
-			//If tie, pick random
-			//Winner reproduces
-			//Repeat
-			//randN(rng) produces random int from 0 to N-1
 
 			for (int n = 0; n < N; n++){	//Reproduction, mutation
 
@@ -479,7 +429,11 @@ int main() {
 				}
 
 				SenderOffspring[n] = SenderPopulation[tourn_arr[maxFitInd]];
-				SenderOffspring[n].reset_fitness();
+				if (fitnessFunction == 0){
+					SenderOffspring[n].reset_fitness();
+				} else {
+					SenderOffspring[n].reset_fitnessAndCostBenefit();
+				}
 				SenderOffspring[n].set_quality(qual_dist(rng));
 
 				//Mutation for SenderOffspring[n]
@@ -624,10 +578,6 @@ int main() {
 	//	dataLog.close();
 	paramFile.close();
 	annVars.close();
-	//	summaryStats.close();
-
-
-
 
 
 	std::cout << "\nDone";

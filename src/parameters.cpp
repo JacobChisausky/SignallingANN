@@ -16,6 +16,7 @@ void from_json(const nlohmann::json& j, parameters& t)
 	NLOHMANN_JSON_FROM(send_0_first);
 	NLOHMANN_JSON_FROM(s_max);
 	NLOHMANN_JSON_FROM(interactionPartners);
+	NLOHMANN_JSON_FROM(fitnessFunction);
 	NLOHMANN_JSON_FROM(complexInit);
 	NLOHMANN_JSON_FROM(nullReceivers);
 	NLOHMANN_JSON_FROM(nullSenders);

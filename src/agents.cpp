@@ -96,11 +96,38 @@ void Sender::change_fitness(double change){
 }
 
 void Sender::reset_fitness(){
-	fitness = 0;
+	fitness = 0.0;
+}
+
+void Sender::reset_fitnessAndCostBenefit(){
+	fitness = 0.0;
+	totalBenefit = 0.0;
+	totalCost = 0.0;
 }
 
 double Sender::get_ann(int var){
 	return annS[var];
+}
+
+void Sender::incrementBenefit(bool response){	//For mult fitness function
+	if (response == 0){
+		totalBenefit += 0.1;	//Using these payoffs for now
+	} else {
+		totalBenefit += 1.0;
+	}
+}
+
+void Sender::incrementCost(double q, double s){
+	//FOR NOW - only allow c = 1.0
+	//don't take in input for c
+	//cost must be bound from 0 to 1...
+	totalCost += s*(1-q);
+	//Cost will be determined by the same cost function as for additive fitness but only with c = 1
+}
+
+void Sender::setMultFitness(int interactionPartners){
+	fitness = totalBenefit/double(interactionPartners) * (1-(totalCost/double(interactionPartners)));
+
 }
 
 Receiver::Receiver(std::array<double, 34> annR_stats) :
@@ -129,13 +156,11 @@ double Receiver::annR_output(double s){
 
 bool annR_test(int resolution, std::array<double, 34> ann){
 
-	double maxOutput = resolution*resolution;
+	double maxOutput = resolution;
 	double totalOutput = 0;
 
 	for (int s_cur = 0; s_cur < resolution; s_cur++){
 		double s = double(s_cur)/double(resolution);
-		for (int q_cur = 0; q_cur < resolution; q_cur++){
-			double q = double(q_cur)/double(resolution);
 
 			double n1 = rlu(ann[1] + s);
 
@@ -153,7 +178,6 @@ bool annR_test(int resolution, std::array<double, 34> ann){
 
 			totalOutput += output;
 
-		}
 	}
 
 	if ((totalOutput > 0) & (totalOutput < maxOutput)){	//This means it is NOT just flat on the top or bottom of phenotype space

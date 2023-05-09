@@ -21,11 +21,17 @@ public:
 	double get_fitness();
 	void ann_mutate(int var, double size);
 	double get_ann(int var);
+	void incrementBenefit(bool response);
+	void incrementCost(double q, double s);
+	void reset_fitnessAndCostBenefit();
+	void setMultFitness(int interactionPartners);
 
 private:
 	std::array<double, 39> annS; //weights and biases for annS
 	double fitness = 0.0;
 	double quality;
+	double totalBenefit = 0.0;
+	double totalCost = 0.0;
 
 };
 
