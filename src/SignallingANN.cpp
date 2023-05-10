@@ -288,7 +288,7 @@ int main(int argc, char* argv[]){
 
 
 		//Start Generation Loop
-		for (int g = 0; g <= G; g++){
+		for (int g = 1; g <= G; g++){
 
 			//Assign qualities to senders in offspring loop, not here.
 
@@ -343,12 +343,13 @@ int main(int argc, char* argv[]){
 					double payoffReceiver = -1.0;
 					bool response = 0;
 					bool nullResponse = 0;
-					if (g < nullHonestBeginG){ //Null receiver behavior. Receiver gets payoff from response. Sender gets payoff from nullResponse
-						double Pr = R_cur.annR_output(s);	//Use different benefit function for now to make Pr = s for receivers
+					if (g <= nullHonestBeginG){ //Null receiver behavior. Receiver gets payoff from response. Sender gets payoff from nullResponse
+						//Just send random s - not actual sender s. q_cur is random
 						if (prob(rng) < s){    //Does NULL receiver respond to signal?
 							nullResponse = 1;		//null response is response for SENDER
 						}
-						payoffReceiver = receiver_benefit_function_PrEqualsS(Pr, s);	//Fitness function doesn't matter for this - this is just to get receiver phenotype we want
+						double Pr = R_cur.annR_output(q_cur);	//Use different benefit function for now to make Pr = s for receivers
+						payoffReceiver = receiver_benefit_function_PrEqualsS(Pr, q_cur);	//Fitness function doesn't matter for this - this is just to get receiver phenotype we want
 					} else {	//Real receiver behavior
 						//Now check receiver ANN - do they respond to signal?
 						//For real evolution - not honest start
@@ -366,7 +367,7 @@ int main(int argc, char* argv[]){
 
 					if (fitnessFunction == 0){ //Additive fitness
 						double payoffSender = 0.0;
-						if (g < nullHonestBeginG){ //Null behavior
+						if (g <= nullHonestBeginG){ //Null behavior
 							payoffSender = sender_fitness_function_Additive(nullResponse, s, q_cur, c, interactionPartners);
 						} else { //not null
 							payoffSender = sender_fitness_function_Additive(response, s, q_cur, c, interactionPartners);
@@ -376,7 +377,7 @@ int main(int argc, char* argv[]){
 
 					} else { //Multiplicative fitness
 						//Up to the last interaction, just sum benefits and costs. Then calculate fitness in last interaction
-						if (g >= nullHonestBeginG){ //not null
+						if (g > nullHonestBeginG){ //not null
 							if (i < interactionPartners - 1){
 								SenderPopulation[nullVecS[j]].incrementBenefit(response);
 								SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);

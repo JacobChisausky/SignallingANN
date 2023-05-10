@@ -2,24 +2,24 @@ library("lubridate")
 
 sh_BinaryName      <- "Program"  #compiled program name
 
-hpc_time <- "0-24:00:00"
+hpc_time <- "0-12:00:00"
 hpc_mem <- 8000
 
 #auto_time <- TRUE #If true, ignore hpc_time and automatically calculate expected time
 
-jobFolder <- "testParams"  #The folder path when you want the JOBS to be written to. To be created in this directiory
+jobFolder <- "testNewNullBehavior"  #The folder path when you want the JOBS to be written to. To be created in this directiory
 
-programPath <- "~/../../scratch/s5429412/src/Program"  #Where is the compiled program located? Include program name
+programPath <- "~/../../scratch/s5429412/SignallingANN/src/Program"  #Where is the compiled program located? Include program name
 
-parallelReplicates <- 1   #This is different from 'replicates' below. In the below replicates, all jobs are set up to run sequentially
+parallelReplicates <- 5   #This is different from 'replicates' below. In the below replicates, all jobs are set up to run sequentially
 #In contrast, this will make replicates to be run in parallel. So, it will copy the entire job (including the number of replicates as given below)
 # and write them each to a different job
 
 replicates <- c(1)
-k <- c(2)
+k <- c(2,5,10)
 seed <- c(0)  #If 0, then give each job a different random seed
 N <- c(1000.0)
-G <- c(200000)
+G <- c(400000)
 c <- c(10.0)
 init_ann_range <- c(1.0)
 mut_rate_ann_S <- c(0.01)
@@ -29,15 +29,16 @@ mut_step_ann_R <- c(0.01)
 send_0_first <- c("true")  #as string
 s_max <- c(10)  
 interactionPartners <- c(10) 
+fitnessFunction <- c(1)
 complexInit <- c("true")
 nullReceivers <- c("false")
 nullSenders <- c("false")
-nullHonestBeginG <- c(100000)
+nullHonestBeginG <- c(200000)
 Report_annVar <- c(8)
 Report_annVar_N <- c(100)
-Report_annInit <- c("true")   #As string
-dataFileName <- "Test_R_Script"   #as string
-dataFileFolder <- "/."   #as string
+Report_annInit <- c("false")   #As string
+dataFileName <- "testNewNull"   #as string
+dataFileFolder <- "."   #as string
 
 
 sameMutRates <- TRUE  #If true, mut_rate_ann_R will be overrided and replaced by mut_rate_ann_S 
@@ -108,6 +109,7 @@ params<-list(replicates,
              send_0_first,
              s_max,
              interactionPartners,
+             fitnessFunction,
              complexInit,
              nullReceivers,
              nullSenders,
@@ -132,6 +134,7 @@ paramsNames <- c("replicates",
                  "send_0_first",
                  "s_max",
                  "interactionPartners",
+                 "fitnessFunction",
                  "complexInit",
                  "nullReceivers",
                  "nullSenders",
@@ -172,38 +175,40 @@ for (pR in 1:parallelReplicates){
                         for (x12 in send_0_first){
                           for (x13 in s_max){
                             for (x14 in interactionPartners){
-                              for (x15 in complexInit){
-                                for (x16 in nullReceivers){
-                                  for (x17 in nullSenders){
-                                    for (x18 in nullHonestBeginG){
-                                      for (x19 in Report_annVar){
-                                        for (x20 in Report_annVar_N){
-                                          for (x21 in Report_annInit){
-                                            
-                                            if (x3 == 0){
-                                              x3 <- sample(1:99999999, 1)
+                              for (x14a in fitnessFunction){
+                                for (x15 in complexInit){
+                                  for (x16 in nullReceivers){
+                                    for (x17 in nullSenders){
+                                      for (x18 in nullHonestBeginG){
+                                        for (x19 in Report_annVar){
+                                          for (x20 in Report_annVar_N){
+                                            for (x21 in Report_annInit){
+                                              
+                                              if (x3 == 0){
+                                                x3 <- sample(1:99999999, 1)
+                                              }
+                                              
+                                              Xparams <- c(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,
+                                                           x11,x12,x13,x14,x14a,x15,x16,x17,x18,x19,x20,
+                                                           x21,paste0("\"",dataFileName,"_",iterator,"\""),paste0("\"",dataFileFolder,"/","\""))
+                                              
+                                              writeTo <- paste0(folderPath,"/",fileName,"_",iterator)
+                                              txt <- "{\n\t"
+                                              i <- 1
+                                              for (i in 1:(length(paramsNames)-1)){
+                                                txt <- paste(txt,"\"",paramsNames[i],"\": ",Xparams[i],",\n\t",sep="")
+                                              }
+                                              txt <- paste(txt,"\"",paramsNames[i+1],"\": ",Xparams[i+1],"\n",
+                                                           "}",sep="")
+                                              
+                                              fileConn<-file(paste0(writeTo,"_params.json"))
+                                              writeLines(txt,fileConn)
+                                              close(fileConn)
+                                              
+                                              fileNameList<-append(fileNameList,paste0(fileName,"_",iterator))
+                                              
+                                              iterator <- iterator + 1
                                             }
-                                            
-                                            Xparams <- c(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,
-                                                         x11,x12,x13,x14,x15,x16,x17,x18,x19,x20,
-                                                         x21,paste0("\"",dataFileName,"_",iterator,"\""),paste0("\"",dataFileFolder,"\""))
-                                            
-                                            writeTo <- paste0(folderPath,"/",fileName,"_",iterator)
-                                            txt <- "{\n\t"
-                                            i <- 1
-                                            for (i in 1:(length(paramsNames)-1)){
-                                              txt <- paste(txt,"\"",paramsNames[i],"\": ",Xparams[i],",\n\t",sep="")
-                                            }
-                                            txt <- paste(txt,"\"",paramsNames[i+1],"\": ",Xparams[i+1],"\n",
-                                                         "}",sep="")
-                                            
-                                            fileConn<-file(paste0(writeTo,"_params.json"))
-                                            writeLines(txt,fileConn)
-                                            close(fileConn)
-                                            
-                                            fileNameList<-append(fileNameList,paste0(fileName,"_",iterator))
-                                            
-                                            iterator <- iterator + 1
                                           }
                                         }
                                       }
@@ -227,11 +232,11 @@ for (pR in 1:parallelReplicates){
   } 
 }
 
-  txt<-paste0("#!/bin/bash\n#SBATCH --job-name=",fileName,
-              "\n#SBATCH --mail-user=jacob.chisausky@evobio.eu\n#SBATCH --mail-type=ALL\n#SBATCH --time=",
-              hpc_time,"\n#SBATCH --mem=",hpc_mem,"\n#SBATCH --array=1-",iterator-1,
-              "\n\nmodule load foss/2022a\n\necho \"SLURM_JOBID: \" $SLURM_JOBID\necho \"SLURM_ARRAY_TASK_ID: \" $SLURM_ARRAY_TASK_ID\necho \"SLURM_ARRAY_JOB_ID: \" $SLURM_ARRAY_JOB_ID\n\n./",sh_BinaryName," `ls -d *.json | awk NR==$SLURM_ARRAY_TASK_ID`")
-  
-  fileConn<-file(paste(folderPath,"/SignallingModel",".sh",sep=""))
-  writeLines(txt,fileConn)
-  close(fileConn)
+txt<-paste0("#!/bin/bash\n#SBATCH --job-name=",fileName,
+            "\n#SBATCH --mail-user=jacob.chisausky@evobio.eu\n#SBATCH --mail-type=ALL\n#SBATCH --time=",
+            hpc_time,"\n#SBATCH --mem=",hpc_mem,"\n#SBATCH --array=1-",iterator-1,
+            "\n\nmodule load foss/2022a\n\necho \"SLURM_JOBID: \" $SLURM_JOBID\necho \"SLURM_ARRAY_TASK_ID: \" $SLURM_ARRAY_TASK_ID\necho \"SLURM_ARRAY_JOB_ID: \" $SLURM_ARRAY_JOB_ID\n\n./",sh_BinaryName," `ls -d *.json | awk NR==$SLURM_ARRAY_TASK_ID`")
+
+fileConn<-file(paste(folderPath,"/SignallingModel",".sh",sep=""))
+writeLines(txt,fileConn)
+close(fileConn)
