@@ -35,7 +35,7 @@ double sender_fitness_function_Additive(bool response, double s, double q, doubl
 	//double fitness = ( (int(response) * (1 - std::pow(s,(1+ (c*q))) ) ) / double(interactionPartners) );
 
 	//Additive fitness
-	double cost = s * c * (1 - q);
+	double cost = s * c * (1.0 - q);
 	double fitness = (double(response) - cost) / double(interactionPartners);
 
 	return fitness;
@@ -47,8 +47,12 @@ double receiver_benefit_function(bool response, double q){
 	//If response not sent: payoff = 1-q
 	//So payoffs are always positive - but it is better to ignore q < 0.5 and respond to q > 0.5
 
-	//Response sent			//Response not sent (response = 0)
-	return (double(response)*q  +  -1*(double(response) - 1.0)*(1-q) );
+	if (response == 1){ //A1
+		return q;
+	} else { //A2
+		return 1.0 - q;
+	}
+	//return (double(response)*q  +  -1.0*(double(response) - 1.0)*(1-q) );
 }
 
 //Benefit function for selecting null receivers where Pr = s
