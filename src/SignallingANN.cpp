@@ -390,25 +390,19 @@ int main(int argc, char* argv[]){
 					} else { //Multiplicative fitness
 						//Up to the last interaction, just sum benefits and costs. Then calculate fitness in last interaction
 						if (g > nullHonestBeginG){ //not null
-							if (i < interactionPartners - 1){
-								SenderPopulation[nullVecS[j]].incrementBenefit(response);
-								SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
-							} else {
-								SenderPopulation[nullVecS[j]].incrementBenefit(response);
-								SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
+							SenderPopulation[nullVecS[j]].incrementBenefit(response);
+							SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
 
+							if (i == (interactionPartners - 1)) {
 								//Calculate fitness
 								SenderPopulation[nullVecS[j]].setMultFitness(interactionPartners);
 							}
 
-						} else { //Null behavior
-							if (i < interactionPartners - 1){
-								SenderPopulation[nullVecS[j]].incrementBenefit(nullResponse);
-								SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
-							} else {
-								SenderPopulation[nullVecS[j]].incrementBenefit(nullResponse);
-								SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
+						} else { //Null behavior. This doesn't produce as nice of a phenotype as I would like.
+							SenderPopulation[nullVecS[j]].incrementBenefit(nullResponse);
+							SenderPopulation[nullVecS[j]].incrementCost(q_cur, s);
 
+							if (i == (interactionPartners - 1)) {
 								//Calculate fitness
 								SenderPopulation[nullVecS[j]].setMultFitness(interactionPartners);
 							}

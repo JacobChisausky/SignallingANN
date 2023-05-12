@@ -121,12 +121,12 @@ void Sender::incrementCost(double q, double s){
 	//FOR NOW - only allow c = 1.0
 	//don't take in input for c
 	//cost must be bound from 0 to 1...
-	totalCost += s*(1-q);
+	totalCost += s*(1.0-q);
 	//Cost will be determined by the same cost function as for additive fitness but only with c = 1
 }
 
 void Sender::setMultFitness(int interactionPartners){
-	fitness = totalBenefit/double(interactionPartners) * (1-(totalCost/double(interactionPartners)));
+	fitness = totalBenefit/double(interactionPartners) * (1.0-(totalCost/double(interactionPartners)));
 
 }
 
