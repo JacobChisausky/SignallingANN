@@ -78,6 +78,7 @@ int main(int argc, char* argv[]){
 	double N = params.N;
 	int G = params.G;
 	double c = params.c;
+	double p = params.p;
 	double init_ann_range = params.init_ann_range;
 	double mut_rate_ann_S = params.mut_rate_ann_S;
 	double mut_rate_ann_R = params.mut_rate_ann_R;
@@ -349,11 +350,18 @@ int main(int argc, char* argv[]){
 					bool nullResponse = 0;
 					if (g <= nullHonestBeginG){ //Null receiver behavior. Receiver gets payoff from response. Sender gets payoff from nullResponse
 						//Just send random s - not actual sender s. q_cur is random
-						if (prob(rng) < s){    //Does NULL receiver respond to signal?
+						if (prob(rng) < p*s){    //Does NULL receiver respond to signal? //Parameter p which modifies this. Used for additive fitness; if p = 1.0, then it is always best for senders to send s = 1 during null phase (additive fitness)
 							nullResponse = 1;		//null response is response for SENDER
 						}
-						double Pr = R_cur.annR_output(q_cur);	//Use different benefit function for now to make Pr = s for receivers
-						payoffReceiver = receiver_benefit_function_PrEqualsS(Pr, q_cur);	//Fitness function doesn't matter for this - this is just to get receiver phenotype we want
+						if (p == 1.0){ //p should be 0.5 if you want to do threshold additive fitness
+							double Pr = R_cur.annR_output(q_cur);	//Use different benefit function for now to make Pr = s for receivers
+							payoffReceiver = receiver_benefit_function_PrEqualsS(Pr, q_cur);	//Fitness function doesn't matter for this - this is just to get receiver phenotype we want
+						} else { // If q != 1.0, we let receivers evolve as if s = q
+							if (prob(rng) < R_cur.annR_output(q_cur)){    //If so - respond to signal
+								response = 1;
+							}
+							payoffReceiver = receiver_benefit_function(response, q_cur);
+						}
 					} else {	//Real receiver behavior
 						//Now check receiver ANN - do they respond to signal?
 						//For real evolution - not honest start

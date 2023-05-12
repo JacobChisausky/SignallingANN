@@ -8,6 +8,7 @@ void from_json(const nlohmann::json& j, parameters& t)
 	NLOHMANN_JSON_FROM(N);
 	NLOHMANN_JSON_FROM(G);
 	NLOHMANN_JSON_FROM(c);
+	NLOHMANN_JSON_FROM(p);
 	NLOHMANN_JSON_FROM(init_ann_range);
 	NLOHMANN_JSON_FROM(mut_rate_ann_S);
 	NLOHMANN_JSON_FROM(mut_rate_ann_R);
