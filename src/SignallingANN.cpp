@@ -42,15 +42,15 @@ double sender_fitness_function_Additive(bool response, double s, double q, doubl
 }
 
 //Benefit function for receivers
-double receiver_benefit_function(bool response, double q){
+double receiver_benefit_function(bool response, double q, double d){
 	//If response sent: payoff = q
 	//If response not sent: payoff = 1-q
 	//So payoffs are always positive - but it is better to ignore q < 0.5 and respond to q > 0.5
 
 	if (response == 1){ //A1
-		return q;
+		return std::pow(q,d);
 	} else { //A2
-		return 1.0 - q;
+		return std::pow((1.0 - q),d);
 	}
 	//return (double(response)*q  +  -1.0*(double(response) - 1.0)*(1-q) );
 }
@@ -78,6 +78,7 @@ int main(int argc, char* argv[]){
 	double N = params.N;
 	int G = params.G;
 	double c = params.c;
+	double d = params.d;
 	double p = params.p;
 	double init_ann_range = params.init_ann_range;
 	double mut_rate_ann_S = params.mut_rate_ann_S;
@@ -360,7 +361,7 @@ int main(int argc, char* argv[]){
 							if (prob(rng) < R_cur.annR_output(q_cur)){    //If so - respond to signal
 								response = 1;
 							}
-							payoffReceiver = receiver_benefit_function(response, q_cur);
+							payoffReceiver = receiver_benefit_function(response, q_cur, d);
 						}
 					} else {	//Real receiver behavior
 						//Now check receiver ANN - do they respond to signal?
@@ -368,7 +369,7 @@ int main(int argc, char* argv[]){
 						if (prob(rng) < R_cur.annR_output(s)){    //If so - respond to signal
 							response = 1;
 						}
-						payoffReceiver = receiver_benefit_function(response, q_cur);
+						payoffReceiver = receiver_benefit_function(response, q_cur, d);
 					}
 
 					//Receiver fitness

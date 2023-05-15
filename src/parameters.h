@@ -11,6 +11,7 @@ struct parameters
 	double	N	= 1000.0;
 	int	G	= 200000;
 	double	c	= 10.0;
+	double d = 5.0;
 	double p = 1.0;  // Use 0.5 for additive fitness
 	double	init_ann_range	= 1.0;
 	double	mut_rate_ann_S	= 0.01;

@@ -279,75 +279,75 @@ paramFiles <- list.files(directoryT1_LongHonest,"*params_t*")
 #1,2,3 look bad
 #but 4 looks good!
 for (num in 1:length(annFiles)){
-annFile <- read.csv(paste0(directoryT1_LongHonest,"/",annFiles[num]))
-paramFile <- read.csv(paste0(directoryT1_LongHonest,"/",paramFiles[num]))
-paramFile$fitnessFunction
-
-paramFile$nullHonestBeginG
-
-sFile <- subset(annFile,indType == "Sender")
-sNull <- subset(sFile,gen==390000)
-sEnd <- subset(sFile,gen==max(sFile$gen))
-
-if (1==2){
-n<-4
-n_annS<-as.numeric(sNull[n,7:45])
-senderANN_printSurface(30,n_annS)
-
-data<-senderPhenotype(70,70,n_annS)
-ggplot(data) +
-  geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
-  scale_color_viridis_c() +
-  theme_bw() +
-  geom_function(fun = pred, colour = "red", linewidth=3)
-}
-
-#Put 30 individuals together
-dataMult<-data.frame()
-for (n in 1:20){
-  n_annS<-as.numeric(sNull[n,7:45])
-  data<-senderPhenotype(30,30,n_annS)
-  data$n <- n  
-  dataMult<-rbind(dataMult,data)
-}
-p <- ggplot(dataMult) +
-  geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
-  scale_color_viridis_c() +
-  theme_bw() +
-  facet_wrap(~n) +
-  geom_function(fun = pred, colour = "red", linewidth=2) +
-  labs(title=num) +
-  labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
-      "\nk = ",paramFile$k,
-      "\nnullReceivers = ", paramFile$nullReceivers,                
-      "\nnullSenders = ", paramFile$nullSenders
-  ))
-
-ggsave(plot=p,paste0(num,"_S.png"),
-       device="png",path=directoryT1_LongHonest,height=8,width=10,unit="in")
-
-rFile <- subset(annFile,indType == "Receiver")[,-(41:45)]
-rNull <- subset(rFile,gen==390000)
-rEnd <- subset(rFile,gen==max(rFile$gen))
-
-dataAll<-data.frame()
-for (n in 1:100){
-  n_annR<-as.numeric(rNull[n,-(1:6)])
-  data<-receiverPhenotype(100,n_annR)
-  data$n<-n
-  dataAll<-rbind(dataAll,data)
-}
-pR<-ggplot(dataAll,aes(x=s,y=output)) + geom_path(aes(group=n),alpha=0.1,size=.8) +
-  theme_bw() + ylim(0,1) + labs(y="Pr", title="100 individuals") +
-  labs(title=num) +
-  labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
-                       "\nk = ",paramFile$k,
-                       "\nnullReceivers = ", paramFile$nullReceivers,                
-                       "\nnullSenders = ", paramFile$nullSenders))
-                
-ggsave(plot=pR,paste0(num,"_R.png"),
-       device="png",path=directoryT1_LongHonest,height=8,width=8,unit="in")
-
+  annFile <- read.csv(paste0(directoryT1_LongHonest,"/",annFiles[num]))
+  paramFile <- read.csv(paste0(directoryT1_LongHonest,"/",paramFiles[num]))
+  paramFile$fitnessFunction
+  
+  paramFile$nullHonestBeginG
+  
+  sFile <- subset(annFile,indType == "Sender")
+  sNull <- subset(sFile,gen==390000)
+  sEnd <- subset(sFile,gen==max(sFile$gen))
+  
+  if (1==2){
+    n<-4
+    n_annS<-as.numeric(sNull[n,7:45])
+    senderANN_printSurface(30,n_annS)
+    
+    data<-senderPhenotype(70,70,n_annS)
+    ggplot(data) +
+      geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
+      scale_color_viridis_c() +
+      theme_bw() +
+      geom_function(fun = pred, colour = "red", linewidth=3)
+  }
+  
+  #Put 30 individuals together
+  dataMult<-data.frame()
+  for (n in 1:20){
+    n_annS<-as.numeric(sNull[n,7:45])
+    data<-senderPhenotype(30,30,n_annS)
+    data$n <- n  
+    dataMult<-rbind(dataMult,data)
+  }
+  p <- ggplot(dataMult) +
+    geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
+    scale_color_viridis_c() +
+    theme_bw() +
+    facet_wrap(~n) +
+    geom_function(fun = pred, colour = "red", linewidth=2) +
+    labs(title=num) +
+    labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
+                         "\nk = ",paramFile$k,
+                         "\nnullReceivers = ", paramFile$nullReceivers,                
+                         "\nnullSenders = ", paramFile$nullSenders
+    ))
+  
+  ggsave(plot=p,paste0(num,"_S.png"),
+         device="png",path=directoryT1_LongHonest,height=8,width=10,unit="in")
+  
+  rFile <- subset(annFile,indType == "Receiver")[,-(41:45)]
+  rNull <- subset(rFile,gen==390000)
+  rEnd <- subset(rFile,gen==max(rFile$gen))
+  
+  dataAll<-data.frame()
+  for (n in 1:100){
+    n_annR<-as.numeric(rNull[n,-(1:6)])
+    data<-receiverPhenotype(100,n_annR)
+    data$n<-n
+    dataAll<-rbind(dataAll,data)
+  }
+  pR<-ggplot(dataAll,aes(x=s,y=output)) + geom_path(aes(group=n),alpha=0.1,size=.8) +
+    theme_bw() + ylim(0,1) + labs(y="Pr", title="100 individuals") +
+    labs(title=num) +
+    labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
+                         "\nk = ",paramFile$k,
+                         "\nnullReceivers = ", paramFile$nullReceivers,                
+                         "\nnullSenders = ", paramFile$nullSenders))
+  
+  ggsave(plot=pR,paste0(num,"_R.png"),
+         device="png",path=directoryT1_LongHonest,height=8,width=8,unit="in")
+  
 }
 
 #Test 1 - End. LongHonestEnd ####
@@ -433,8 +433,8 @@ for (num in 1:length(annFiles)){
   sFile <- subset(annFile,indType == "Sender")
   #sNull <- subset(sFile,gen==390000)
   sEnd <- subset(sFile,gen==max(sFile$gen))
-
-    #Put 30 individuals together
+  
+  #Put 30 individuals together
   dataMult<-data.frame()
   for (n in 1:20){
     n_annS<-as.numeric(sEnd[n,7:45])
@@ -484,8 +484,8 @@ for (num in 1:length(annFiles)){
 
 #Test 1 - null receivers ####
 #Try with null receivers respons with Pr = 0.5s.
-  #This will result in senders signalling if q>0.5 only
-  #Then have receivers evolve to this: senders signal at s = q
+#This will result in senders signalling if q>0.5 only
+#Then have receivers evolve to this: senders signal at s = q
 
 directoryT1_NullReceivers <- "D:/StAndrews/SignallingANN/code_MultAdd/codeMultAdd_nullReceivers"
 annFiles <- list.files(directoryT1_NullReceivers,"*annVars*")
@@ -563,4 +563,181 @@ for (num in 1:length(annFiles)){
   ggsave(plot=pR,paste0(num,"_R.png"),
          device="png",path=directoryT1_NullReceivers,height=8,width=8,unit="in")
   
+}
+
+
+
+#Test 2 LongHonest, after code changes ####
+directoryT2_longHonest <- "D:/StAndrews/SignallingANN/code_MA_tests2/test_2_multFitness_doubles"
+annFiles <- list.files(directoryT2_longHonest,"*annVars*")
+paramFiles <- list.files(directoryT2_longHonest,"*params_t*")
+
+for (G in c(400000,450000,500000,550000,600000)){
+  for (num in 1:length(annFiles)){
+    annFile <- read.csv(paste0(directoryT2_longHonest,"/",annFiles[num]))
+    paramFile <- read.csv(paste0(directoryT2_longHonest,"/",paramFiles[num]))
+    paramFile$fitnessFunction
+    
+    paramFile$nullHonestBeginG
+    unique(annFile$gen)
+    
+    sFile <- subset(annFile,indType == "Sender")
+    sNull <- subset(sFile,gen==G)
+    sEnd <- subset(sFile,gen==max(sFile$gen))
+    
+    if (1==2){
+      n<-1
+      n_annS<-as.numeric(sNull[n,7:45])
+      
+      senderANN_printSurface(30,n_annS)
+      
+      data<-senderPhenotype(70,70,n_annS)
+      ggplot(data) +
+        geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
+        scale_color_viridis_c() +
+        theme_bw() +
+        geom_function(fun = pred, colour = "red", linewidth=3)
+    }
+    
+    #Put 30 individuals together
+    dataMult<-data.frame()
+    for (n in 1:20){
+      n_annS<-as.numeric(sNull[n,7:45])
+      data<-senderPhenotype(30,30,n_annS)
+      data$n <- n  
+      dataMult<-rbind(dataMult,data)
+    }
+    p <- ggplot(dataMult) +
+      geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
+      scale_color_viridis_c() +
+      theme_bw() +
+      facet_wrap(~n) +
+      geom_function(fun = pred, colour = "red", linewidth=2) +
+      labs(title=num) +
+      labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
+                           "\ngen = ",G,
+                           "\nk = ",paramFile$k,
+                           "\nnullReceivers = ", paramFile$nullReceivers,                
+                           "\nnullSenders = ", paramFile$nullSenders
+      ))
+    
+    ggsave(plot=p,paste0(num,"_",G,"_S.png"),
+           device="png",path=directoryT2_longHonest,height=8,width=10,unit="in")
+    
+    rFile <- subset(annFile,indType == "Receiver")[,-(41:45)]
+    rNull <- subset(rFile,gen==G)
+    rEnd <- subset(rFile,gen==max(rFile$gen))
+    
+    dataAll<-data.frame()
+    for (n in 1:100){
+      n_annR<-as.numeric(rNull[n,-(1:6)])
+      data<-receiverPhenotype(100,n_annR)
+      data$n<-n
+      dataAll<-rbind(dataAll,data)
+    }
+    pR<-ggplot(dataAll,aes(x=s,y=output)) + geom_path(aes(group=n),alpha=0.1,size=.8) +
+      theme_bw() + ylim(0,1) + labs(y="Pr", title="100 individuals") +
+      labs(title=num) +
+      labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
+                           "\ngen = ",G,
+                           "\nk = ",paramFile$k,
+                           "\nnullReceivers = ", paramFile$nullReceivers,                
+                           "\nnullSenders = ", paramFile$nullSenders))
+    
+    ggsave(plot=pR,paste0(num,"_",G,"_R.png"),
+           device="png",path=directoryT2_longHonest,height=8,width=8,unit="in")
+    
+  }
+}
+
+#Test 2 additive ####
+directoryT2_add <- "D:/StAndrews/SignallingANN/code_MA_tests2/test_addFit_p"
+annFiles <- list.files(directoryT2_add,"*annVars*")
+paramFiles <- list.files(directoryT2_add,"*params_t*")
+
+paramsAll<-data.frame()
+for (num in 1:length(annFiles)){
+  paramFile <- read.csv(paste0(directoryT2_add,"/",paramFiles[num]))
+  paramFile$num <- num
+  paramsAll<-rbind(paramFile,paramsAll)
+}
+paramsAll
+#Parmas - mut steps, mut rates, k
+#Data at 50000 100000 150000 200000 250000 300000 3500000 400000
+#Null until 200000
+
+for (G in c(200000, 250000, 300000, 350000, 400000)){
+  for (num in 1:length(annFiles)){
+    annFile <- read.csv(paste0(directoryT2_add,"/",annFiles[num]))
+    paramFile <- read.csv(paste0(directoryT2_add,"/",paramFiles[num]))
+    paramFile$fitnessFunction
+    paramFile$nullHonestBeginG
+    unique(annFile$gen)
+    
+    sFile <- subset(annFile,indType == "Sender")
+    sNull <- subset(sFile,gen==G)
+    sEnd <- subset(sFile,gen==max(sFile$gen))
+    
+    if (1==2){
+      n<-1
+      n_annS<-as.numeric(sNull[n,7:45])
+      
+      senderANN_printSurface(30,n_annS)
+      
+      data<-senderPhenotype(70,70,n_annS)
+      ggplot(data) +
+        geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
+        scale_color_viridis_c() +
+        theme_bw() +
+        geom_function(fun = pred, colour = "red", linewidth=3)
+    }
+    
+    #Put 30 individuals together
+    dataMult<-data.frame()
+    for (n in 1:20){
+      n_annS<-as.numeric(sNull[n,7:45])
+      data<-senderPhenotype(30,30,n_annS)
+      data$n <- n  
+      dataMult<-rbind(dataMult,data)
+    }
+    p <- ggplot(dataMult) +
+      geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
+      scale_color_viridis_c() +
+      theme_bw() +
+      facet_wrap(~n) +
+      geom_function(fun = pred, colour = "red", linewidth=2) +
+      labs(title=num) +
+      labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
+                           "\ngen = ",G,
+                           "\nmutRates = ", paramFile$mut_rate_ann_R,
+                           "\nmutSteps = ", paramFile$mut_step_ann_R,
+                           "\nk = ",paramFile$k
+                            ))
+    
+    ggsave(plot=p,paste0(num,"_",G/10000,"_S.png"),
+           device="png",path=directoryT2_add,height=8,width=10,unit="in")
+    
+    rFile <- subset(annFile,indType == "Receiver")[,-(41:45)]
+    rNull <- subset(rFile,gen==G)
+    rEnd <- subset(rFile,gen==max(rFile$gen))
+    
+    dataAll<-data.frame()
+    for (n in 1:100){
+      n_annR<-as.numeric(rNull[n,-(1:6)])
+      data<-receiverPhenotype(100,n_annR)
+      data$n<-n
+      dataAll<-rbind(dataAll,data)
+    }
+    pR<-ggplot(dataAll,aes(x=s,y=output)) + geom_path(aes(group=n),alpha=0.1,size=.8) +
+      theme_bw() + ylim(0,1) + labs(y="Pr", title="100 individuals") +
+      labs(title=num) +
+      labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
+                           "\ngen = ",G,
+                           "\nmutRates = ", paramFile$mut_rate_ann_R,
+                           "\nmutSteps = ", paramFile$mut_step_ann_R,
+                           "\nk = ",paramFile$k))
+    ggsave(plot=pR,paste0(num,"_",G/10000,"_R.png"),
+           device="png",path=directoryT2_add,height=8,width=8,unit="in")
+    
+  }
 }
