@@ -712,7 +712,7 @@ for (G in c(200000, 250000, 300000, 350000, 400000)){
                            "\nmutRates = ", paramFile$mut_rate_ann_R,
                            "\nmutSteps = ", paramFile$mut_step_ann_R,
                            "\nk = ",paramFile$k
-                            ))
+      ))
     
     ggsave(plot=p,paste0(num,"_",G/10000,"_S.png"),
            device="png",path=directoryT2_add,height=8,width=10,unit="in")
@@ -749,12 +749,23 @@ paramFiles <- list.files(directory_exp3,"*params_t*")
 
 annFile <- read.csv(paste0(directory_exp3,"/",annFiles[1]))
 unique(annFile$gen)
-paramFile <- read.csv(paste0(directory_exp3,"/",paramFiles[1]))
-paramFile$nullHonestBeginG
 
-for (G in unique(annFile$gen)){
-  for (num in 1:length(annFiles)){
-  
+paramsAll<-data.frame()
+for (i in paramFiles){
+  paramFile <- read.csv(paste0(directory_exp3,"/",i))
+  paramsAll<-rbind(paramsAll,paramFile)
+}
+paramsAll
+#Variable params - some have nullHonestBeginG 200000, some have 0
+#Send 0 first is 0 or 1
+#FitnessFunction 0 or 1
+
+unique(paramsAll$d)
+
+#for (G in unique(annFile$gen)){
+for (num in 1:length(annFiles)){
+  for (G in c(400000,200000)){
+    
     annFile <- read.csv(paste0(directory_exp3,"/",annFiles[num]))
     paramFile <- read.csv(paste0(directory_exp3,"/",paramFiles[num]))
     paramFile$fitnessFunction
@@ -780,7 +791,7 @@ for (G in unique(annFile$gen)){
         geom_function(fun = pred, colour = "red", linewidth=3)
     }
     
-    #Put 30 individuals together
+    #Put 20 individuals together
     dataMult<-data.frame()
     for (n in 1:20){
       n_annS<-as.numeric(sNull[n,7:45])
@@ -798,11 +809,10 @@ for (G in unique(annFile$gen)){
       labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
                            "\ngen = ",G,
                            "\nk = ",paramFile$k,
-                           "\nnullReceivers = ", paramFile$nullReceivers,                
-                           "\nnullSenders = ", paramFile$nullSenders
-      ))
+                           "\nsend_0_first = ",paramFile$send_0_first,
+                           "\nNullHonestBeginG = ",paramFile$nullHonestBeginG))
     
-    ggsave(plot=p,paste0(num,"_",G,"_S.png"),
+    ggsave(plot=p,paste0(num,"_",G/10000,"_S.png"),
            device="png",path=directory_exp3,height=8,width=10,unit="in")
     
     rFile <- subset(annFile,indType == "Receiver")[,-(41:45)]
@@ -822,10 +832,10 @@ for (G in unique(annFile$gen)){
       labs(subtitle=paste0("ff = ",paramFile$fitnessFunction,
                            "\ngen = ",G,
                            "\nk = ",paramFile$k,
-                           "\nnullReceivers = ", paramFile$nullReceivers,                
-                           "\nnullSenders = ", paramFile$nullSenders))
+                           "\nsend_0_first = ",paramFile$send_0_first,
+                           "\nNullHonestBeginG = ",paramFile$nullHonestBeginG))
     
-    ggsave(plot=pR,paste0(num,"_",G,"_R.png"),
+    ggsave(plot=pR,paste0(num,"_",G/10000,"_R.png"),
            device="png",path=directory_exp3,height=8,width=8,unit="in")
     
   }
