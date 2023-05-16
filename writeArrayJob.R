@@ -22,6 +22,7 @@ N <- c(1000.0)
 G <- c(400000)
 c <- c(1.0)
 p <- c(0.5)
+d <- c(5.0)
 init_ann_range <- c(1.0)
 mut_rate_ann_S <- c(0.01)
 mut_rate_ann_R <- c(0.01)
@@ -103,6 +104,7 @@ params<-list(replicates,
              G,
              c,
              p,
+             d,
              init_ann_range,
              mut_rate_ann_S,
              mut_rate_ann_R,
@@ -129,6 +131,7 @@ paramsNames <- c("replicates",
                  "G",
                  "c",
                  "p",
+                 "d",
                  "init_ann_range",
                  "mut_rate_ann_S",
                  "mut_rate_ann_R",
@@ -165,6 +168,7 @@ for (pR in 1:parallelReplicates){
           for (x5 in G){
             for (x6 in c){
               for (x6a in p){
+                for (x6b in d){
                 for (x7 in init_ann_range){
                   for (x8 in mut_rate_ann_S){
                     if (sameMutRates == TRUE){
@@ -192,7 +196,7 @@ for (pR in 1:parallelReplicates){
                                                   x3 <- sample(1:99999999, 1)
                                                 }
                                                 
-                                                Xparams <- c(x1,x2,x3,x4,x5,x6,x6a,x7,x8,x9,x10,
+                                                Xparams <- c(x1,x2,x3,x4,x5,x6,x6a,x6b,x7,x8,x9,x10,
                                                              x11,x12,x13,x14,x14a,x15,x16,x17,x18,x19,x20,
                                                              x21,paste0("\"",dataFileName,"_",iterator,"\""),paste0("\"",dataFileFolder,"/","\""))
                                                 
@@ -223,6 +227,7 @@ for (pR in 1:parallelReplicates){
                               }
                             }
                           }
+                        }
                         }
                       }
                     }
