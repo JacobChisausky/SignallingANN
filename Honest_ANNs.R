@@ -248,6 +248,8 @@ annFiles <- list.files(directory,"*annVars*")
 #6 good
 #7 good
 #8 bad
+#9 good
+#10 
 for (num in 1:10){
   annFile <- read.csv(paste0(directory,"/",annFiles[num]))
   sFile <- subset(annFile,indType == "Sender")
@@ -277,42 +279,9 @@ for (num in 1:10){
 
 #*** Need multiple options for starts - threshold one. This idea another
 
-#Now make a table of all good ANNs
-list <- c(1,3,4,5,6,8,9,10)
-sendersAll <- data.frame()
-for (num in list){
-  annFile <- read.csv(paste0(directory,"/",annFiles[num]))
-  sFile <- subset(annFile,indType == "Sender")
-  sEnd <- subset(sFile,gen==max(sFile$gen))
-  sendersAll<-rbind(sendersAll,sEnd)
-}
-sendersAllANNs<-sendersAll[7:ncol(sendersAll)]
-#save this as a .csv
-write.csv(sendersAllANNs, "C:/Users/owner/Documents/S4/Simulation_ANN/data_null/null_senders.csv", row.names=FALSE)
-
-
-
-
-
-
-
-
-
-
-
-
-
-##
-
-unique(sFile$gen)
-unique(annFile$rep)
-# Senders ####
-
-
-
-#Real data - receivers
-unique(rFile$gen)
-rEnd <- subset(rFile,gen==220000)
+annFile <- read.csv(paste0(directory,"/",annFiles[1]))
+rFile <- subset(annFile,indType == "Receiver")[,-(41:45)]
+rEnd <- subset(rFile,gen==max(rFile$gen))
 
 n<-1
 n_annR<-as.numeric(rEnd[n,-(1:6)])

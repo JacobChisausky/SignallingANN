@@ -97,7 +97,7 @@ int main(int argc, char* argv[]){
 	//double c = params.c;
 	//double d = params.d;
 	//double p = params.p;
-	int fitnessFunction = params.fitnessFunction; //0 = additive. 1 = multiplicative
+//	int fitnessFunction = params.fitnessFunction; //0 = additive. 1 = multiplicative
 
 	double mut_rate_ann_S = params.mut_rate_ann_S;
 	double mut_rate_ann_R = params.mut_rate_ann_R;
