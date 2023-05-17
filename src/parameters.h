@@ -13,6 +13,13 @@ struct parameters
 	double	c	= 10.0;
 	double d = 5.0;
 	double p = 1.0;  // Use 0.5 for additive fitness
+
+	int s_levels = 2;
+	int q_levels = 2;
+
+	double c1 = 0.5;
+	double c0 = 1.5;
+
 	double	init_ann_range	= 1.0;
 	double	mut_rate_ann_S	= 0.01;
 	double	mut_rate_ann_R	= 0.01;
@@ -29,6 +36,7 @@ struct parameters
 	int	Report_annVar	= 10;
 	int	Report_annVar_N	= 100;
 	bool	Report_annInit	= true;
+	bool	recordFittestANNs = true;
 	std::string	dataFileName	= "test_json";
 	std::string	dataFileFolder	= "/.";
 };
