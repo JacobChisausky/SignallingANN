@@ -1,3 +1,4 @@
+/*
 #include "parameters.h"
 
 void from_json(const nlohmann::json& j, parameters& t)
@@ -25,3 +26,4 @@ void from_json(const nlohmann::json& j, parameters& t)
 	NLOHMANN_JSON_FROM(dataFileName);
 	NLOHMANN_JSON_FROM(dataFileFolder);
 }
+*/

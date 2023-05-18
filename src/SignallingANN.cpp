@@ -13,7 +13,8 @@
 #include <fstream>
 #include <string>
 
-#include "parameters.h"
+//Temporary for non-json testing
+//#include "parameters.h"
 #include "agents.h"
 
 
@@ -69,6 +70,47 @@ double receiver_benefit_function_PrEqualsS(double Pr, double s){
 
  */
 
+
+int main(){
+
+	int replicates = 1;
+
+	int s_levels = 2;		//Number of s values to use
+	int q_levels = 2;		//Number of q values to use
+	//int r_levels = params.r_levels;		//Number of r values to use. For now only 2. Talk to GR about this.
+
+	double c0 = 1.5;
+	double c1 = 0.5;
+
+	//constexpr int k = k1;
+	int seed = 12345678;
+	double N = 100;
+	int G = 10000;
+
+	double mut_rate_ann_S = 0.01;
+	double mut_rate_ann_R = 0.01;
+	double mut_step_ann_S = 0.01;
+	double mut_step_ann_R = 0.01;
+
+	//bool send_0_first = params.send_0_first;
+	//int s_max = params.s_max;
+
+	int interactionPartners = 10;
+	int k = 2;
+
+	double init_ann_range = 1;
+	bool complexInit = 1;
+
+	int Report_annVar = 4;
+	int Report_annVar_N = 100;
+	bool Report_annInit = 1;
+	bool recordFittestANNs = 1;
+
+	std::string dataFileName = "testCPP";
+	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/test";
+
+
+/*
 //json version
 int main(int argc, char* argv[]){
 	// getting params from the parameter file via json
@@ -125,7 +167,7 @@ int main(int argc, char* argv[]){
 
 	std::string dataFileName = params.dataFileName;
 	std::string dataFileFolder = params.dataFileFolder;
-
+*/
 	//_________End parameter input
 
 	//Get ANNs from .csv eventually for honest start?
@@ -177,8 +219,8 @@ int main(int argc, char* argv[]){
 	//Prepare output files
 	annVars << "rep,gen,indType,indNum,quality,fitness,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38";
 	//		dataLog << "rep,gen,ind,indType,sendType,strategy,alphaBeta,fitness";
-	paramFile << "replicates,s_levels,q_levels,c0,c1,seed,N,G,fitnessFunction,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,dataFileName,dataFileFolder";
-	paramFile << "\n"<< std::to_string(replicates) << "," << std::to_string(s_levels) << "," << std::to_string(q_levels) << "," << std::to_string(c0)<<","<<std::to_string(c1)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(fitnessFunction)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(k)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(complexInit)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<std::to_string(recordFittestANNs)<<","<<dataFileName<<","<<dataFileFolder;
+	paramFile << "replicates,s_levels,q_levels,c0,c1,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,dataFileName,dataFileFolder";
+	paramFile << "\n"<< std::to_string(replicates) << "," << std::to_string(s_levels) << "," << std::to_string(q_levels) << "," << std::to_string(c0)<<","<<std::to_string(c1)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(k)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(complexInit)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<std::to_string(recordFittestANNs)<<","<<dataFileName<<","<<dataFileFolder;
 
 	//Determine what values of s and q are used
 	//These are evenly spaced from 0 to 1
@@ -187,9 +229,10 @@ int main(int argc, char* argv[]){
 		return 97;
 	}
 
+
 	std::vector<double> s_vals;
 	double s_increment = 1.0/double(s_levels-1);
-	for (double val = 0.0; val += s_increment; val <= 1.0){
+	for (double val = 0.0; val <= 1.0; val += s_increment){
 		s_vals.push_back(val);
 	}
 	if (s_vals.size() != s_levels){
@@ -198,12 +241,13 @@ int main(int argc, char* argv[]){
 
 	std::vector<double> q_vals;
 	double q_increment = 1.0/double(q_levels-1);
-	for (double val = 0.0; val += q_increment; val <= 1.0){
+	for (double val = 0.0; val <= 1.0; val += q_increment){
 		q_vals.push_back(val);
 	}
 	if (q_vals.size() != q_levels){
 		return 88;
 	}
+
 
 	//For k-selection tournament
 	std::vector<int> tourn_arr;
@@ -274,7 +318,7 @@ int main(int argc, char* argv[]){
 			double qualityInit = q_vals[randQ(rng)];
 
 			SenderPopulation.push_back(Sender(sender_ann,qualityInit));		//Create sender agent  with that network
-			SenderOffspring	.push_back(Sender(sender_ann,qualityInit));		//Offspring = parents in first generation.
+			SenderOffspring.push_back(Sender(sender_ann,qualityInit));		//Offspring = parents in first generation.
 		}
 
 		//if (nullReceivers == false){

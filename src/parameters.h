@@ -1,3 +1,4 @@
+/*
 #ifndef PARAMETERS_H
 #define PARAMETERS_H
 
@@ -45,3 +46,4 @@ void from_json(const nlohmann::json& j, parameters& p);
 
 
 #endif // SIM_PARAMETERS_H
+*/

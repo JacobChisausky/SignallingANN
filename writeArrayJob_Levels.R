@@ -38,6 +38,8 @@ recordFittestANNs<- c("false")
 dataFileName<- "fName"
 dataFileFolder<- "."
 
+
+
 sameMutRates <- TRUE  #If true, mut_rate_ann_R will be overrided and replaced by mut_rate_ann_S 
 sameMutSteps <- TRUE  #If true, mut_step_ann_R will be overrided and replaced by mut_step_ann_S
 
