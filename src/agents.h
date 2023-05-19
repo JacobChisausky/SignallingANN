@@ -37,8 +37,8 @@ private:
 
 class Receiver {
 public:
-	Receiver(const std::array<double, 34> annR_stats);
-	double annR_output(double s);
+	Receiver(const std::array<double, 39> annR_stats);
+	double annR_output(double s, double r);
 	void change_fitness(double change);
 	void reset_fitness();
 	double get_fitness();
@@ -46,14 +46,14 @@ public:
 	double get_ann(int var);
 
 private:
-	std::array<double, 34> annR;//weights and biases for annR
+	std::array<double, 39> annR;//weights and biases for annR
 	double fitness = 0.0;
 
 };
 
 double rlu(double input);
 bool annS_test(int resolution, std::array<double, 39> ann);
-bool annR_test(int resolution, std::array<double, 34> ann);
+bool annR_test(int resolution, std::array<double, 39> ann);
 
 
 //#endif /* SIGNALLER_H_ */

@@ -4,6 +4,12 @@
 // Description : Signalling ANN - Discrete
 //============================================================================
 
+//Some open questions:
+//How sensitive are (any) results to cost functions?
+//Difficult to test..
+//What if responding is competetive? I.e., receivers can only respond to one sender
+//I expect that this would have very different dynamics.
+
 #include <iostream>
 #include <iostream>
 #include <vector>
@@ -26,66 +32,51 @@ double cost_function(double s, double q, double c0, double c1){
 	return cost;
 }
 
-double sender_benefit_function(bool response){
+double sender_benefit_function(double r){
 	//Can easily implement differential benefits here (b1 and b2)
+	//For r_levels = 2: this is fine.
+	//As we increase r_levels, we may need to tweak this.
+	//Otherwise, sender benefits will be low relative to costs.
+	//Adding a parameter to increase benefits (like 2.0*r) might be the easiest solution.
 
-	return double(response);
+	return r;
 }
 
-/*
-//Benefit function for senders
-double sender_fitness_function_Additive(bool response, double s, double q, double c, int interactionPartners){
-	//This will be ran after each interaction and summed for all interaction. Each value is divided by interactionPartners to keep consistency across replicates - max fitness = 1, min = 0
+//Receiver benefit function
+//r has levels.
+//It is best to respond with high r to high q
+//It is best to respond with low r to low q
+//Or - is r = q best?
+//In this case with 2 r levels:
+//r = 1 to q = 1 is good (A1 to T1 in Zollman et al terms)
+//r =0 to q = 0 is good (A2 to T2)
+//Fitness = 1-std(r-q)
 
-	//This is multiplicative: fitness = benefits * survival probability
-	//double fitness = ( (int(response) * (1 - std::pow(s,(1+ (c*q))) ) ) / double(interactionPartners) );
-
-	//Additive fitness
-	double cost = s * c * (1.0 - q);
-	double fitness = (double(response) - cost) / double(interactionPartners);
-
-	return fitness;
+double receiver_benefit_function(double r, double q){
+	double benefit = 1.0 - std::abs(r-q);
+	return benefit;
 }
- */
-//Benefit function for receivers
-
-double receiver_benefit_function(bool response, double q){
-	//If response sent: payoff = q
-	//If response not sent: payoff = 1-q
-	//So payoffs are always positive - but it is better to ignore q < 0.5 and respond to q > 0.5
-
-	if (response == 1){ //A1
-		return q;
-	} else { //A2
-		return (1.0-q);
-	}
-	//For s and q levels = 2, this is exactly analaous to Zollman et al 2013.
-}
-
-/*
-//Benefit function for selecting null receivers where Pr = s
-double receiver_benefit_function_PrEqualsS(double Pr, double s){
-	return (1.0 - std::abs(Pr-s));
-}
-
- */
 
 
 int main(){
+
+	//To add:
+	int initOption = 1;
+	int maxTrainingTime = 100000;
+	double targetAccuracy = 0.9;
 
 	int replicates = 1;
 
 	int s_levels = 2;		//Number of s values to use
 	int q_levels = 2;		//Number of q values to use
-	//int r_levels = params.r_levels;		//Number of r values to use. For now only 2. Talk to GR about this.
+	int r_levels = 2;		//Number of r values to use. For now only 2. Talk to GR about this.
 
 	double c0 = 1.5;
 	double c1 = 0.5;
 
-	//constexpr int k = k1;
 	int seed = 12345678;
-	double N = 100;
-	int G = 10000;
+	double N = 1000;
+	int G = 5000;
 
 	double mut_rate_ann_S = 0.01;
 	double mut_rate_ann_R = 0.01;
@@ -101,16 +92,16 @@ int main(){
 	double init_ann_range = 1;
 	bool complexInit = 1;
 
-	int Report_annVar = 4;
+	int Report_annVar = 10;
 	int Report_annVar_N = 100;
 	bool Report_annInit = 1;
 	bool recordFittestANNs = 1;
 
 	std::string dataFileName = "testCPP";
-	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/test";
+	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/data";
 
 
-/*
+	/*
 //json version
 int main(int argc, char* argv[]){
 	// getting params from the parameter file via json
@@ -167,7 +158,7 @@ int main(int argc, char* argv[]){
 
 	std::string dataFileName = params.dataFileName;
 	std::string dataFileFolder = params.dataFileFolder;
-*/
+	 */
 	//_________End parameter input
 
 	//Get ANNs from .csv eventually for honest start?
@@ -224,8 +215,8 @@ int main(int argc, char* argv[]){
 
 	//Determine what values of s and q are used
 	//These are evenly spaced from 0 to 1
-	if (s_levels < 2 || q_levels < 2){
-		std::cout << "s_levels and q_levels must be > 1";
+	if (s_levels < 2 || q_levels < 2 || r_levels < 2){
+		std::cout << "s_levels and q_levels and r_levels must be > 1";
 		return 97;
 	}
 
@@ -248,6 +239,15 @@ int main(int argc, char* argv[]){
 		return 88;
 	}
 
+	std::vector<double> r_vals;
+	double r_increment = 1.0/double(r_levels-1);
+	for (double val = 0.0; val <= 1.0; val += r_increment){
+		r_vals.push_back(val);
+	}
+	if (r_vals.size() != r_levels){
+		return 88;
+	}
+
 
 	//For k-selection tournament
 	std::vector<int> tourn_arr;
@@ -265,6 +265,8 @@ int main(int argc, char* argv[]){
 	std::uniform_real_distribution<double> init_ann_dist(-std::abs(init_ann_range),std::abs(init_ann_range));
 	std::uniform_int_distribution<int> randN(0,N-1);
 	std::uniform_int_distribution<int> randQ(0,(q_levels-1));
+	std::uniform_int_distribution<int> randS(0,(s_levels-1));
+	std::uniform_int_distribution<int> randR(0,(r_levels-1));
 	auto ann_mu_S = std::bernoulli_distribution(std::abs(mut_rate_ann_S)); //distribution for ann mutation chance - sender
 	auto ann_mu_R = std::bernoulli_distribution(std::abs(mut_rate_ann_R)); //distribution for ann mutation chance - receivers
 
@@ -295,6 +297,7 @@ int main(int argc, char* argv[]){
 		std::vector<Receiver> ReceiverOffspring;
 
 		//Initialize Population
+		//Begin with random ANNs
 
 		for (int i = 0; i < N; i++){	//senders
 			std::array<double, 39> sender_ann; //Create ann for sender
@@ -321,8 +324,29 @@ int main(int argc, char* argv[]){
 			SenderOffspring.push_back(Sender(sender_ann,qualityInit));		//Offspring = parents in first generation.
 		}
 
-		//if (nullReceivers == false){
 		for (int i = 0; i < N; i++){	//receivers
+			std::array<double, 39> receiver_ann; //Create ann for receiver
+			if (complexInit == false){
+				for (int j = 0; j < receiver_ann.size(); j++){
+					receiver_ann[j] = init_ann_dist(rng);				//Create a random neural network for senders
+				}
+			} else if (complexInit==true){
+				bool annOkay = false;
+				while (annOkay == false){
+					for (int j = 0; j < receiver_ann.size(); j++){
+						receiver_ann[j] = init_ann_dist(rng);				//Create a random neural network for senders
+					}
+					//Now test the network and if it is complex enough, set annOkay to true
+					annOkay = annR_test(10, receiver_ann);
+				}
+			}
+			ReceiverPopulation.push_back(Receiver(receiver_ann));		//Create sender agent  with that network
+			ReceiverOffspring.push_back(Receiver(receiver_ann));		//Offspring = parents in first generation.
+		}
+
+		//Old receiver ANNs
+		//if (nullReceivers == false){
+		/*	for (int i = 0; i < N; i++){	//receivers
 
 			std::array<double, 34> receiver_ann; //Create ann for receiver
 			if (complexInit == false){
@@ -342,7 +366,7 @@ int main(int argc, char* argv[]){
 
 			ReceiverPopulation.push_back(Receiver(receiver_ann));		//Create sender agent  with that network
 			ReceiverOffspring.push_back(Receiver(receiver_ann));		//Offspring = parents in first generation.
-		}
+		}*/
 		/*} else if (nullReceivers == true){
 			//Disable mutations
 
@@ -357,6 +381,171 @@ int main(int argc, char* argv[]){
 
 		//Now SenderPopulation and ReceiverPopulation are populated with agents of random networks and fitness 0.
 
+		//Initialize option: Honest - take the ANNs and train them to prespecified behavior.
+
+		int genAcheived = maxTrainingTime;
+		if (initOption == 1){	//This is for s_levels = 2, q_levels = 2. This is a Zollman Honest Equilibrium
+			//What if we init at hybrid equilibrium - q = 0, prob sending =
+
+			//Signaller: s = q.
+			//A1 with Pr = q
+
+			double maxDeviation = N;
+			double targetDeviation = (1.0-targetAccuracy)*maxDeviation;
+			bool targetAcheived = false;
+
+			//Train signallers
+			for (int trainingGen = 1; trainingGen <= maxTrainingTime; trainingGen++){
+				if (targetAcheived == true){
+					break;
+				}
+
+				//Total deviation from perfect performance for receivers and senders
+				double totalDeviationR = 0.0;
+				double totalDeviationS = 0.0;
+
+				for (int i = 0; i < N; i++){
+
+					//Senders
+					Sender S_cur = SenderPopulation[i];
+					double q_rand = q_vals[randQ(rng)]; //random q
+
+					//Try a random q. If s = q, reward.
+
+
+					double s = 0;
+					bool s_selected = false;
+					for (int tries = 0; tries < 10; tries++){
+						//Shuffle s_vals
+						std::shuffle(std::begin(s_vals), std::end(s_vals), rng);
+						//Try each value in vector s_vals. This is sampling without replacement.
+						for (int s_try = 0; s_try < s_levels; s_try++){
+
+							if (prob(rng) < S_cur.annS_output(s_vals[s_try], q_rand)){
+								s = s_vals[s_try];
+								s_selected = true;
+								break;
+							}
+						}
+						if (s_selected == true){
+							break;
+						}
+					}
+
+					//s is now selected.
+					//Fitness = 1 - abs(q_rand - s)
+					double fitnessS = 1.0 - std::abs(q_rand - s);
+					SenderPopulation[i].change_fitness(fitnessS);
+
+					//Receivers
+
+					Receiver R_cur = ReceiverPopulation[i];
+					double s_rand = s_vals[randS(rng)]; //random s
+
+					//Try a random s. Output r = s is best
+
+					double r = 0;
+					bool r_selected = false;
+					for (int tries = 0; tries < 10; tries++){
+						//Shuffle r_vals
+						std::shuffle(std::begin(r_vals), std::end(r_vals), rng);
+						//Try each value in vector s_vals. This is sampling without replacement.
+						for (int r_try = 0; r_try < r_levels; r_try++){
+
+							if (prob(rng) < R_cur.annR_output(s_rand, r_vals[r_try])){
+								r = r_vals[r_try];
+								r_selected = true;
+								break;
+							}
+						}
+						if (r_selected == true){
+							break;
+						}
+					}
+
+					double fitnessR = receiver_benefit_function(r, s_rand);	//Giving s and NOT q to the benefit function. At honest state, s = q.
+					ReceiverPopulation[i].change_fitness(fitnessR);
+
+					//Total deviation for receivers and senders
+					totalDeviationR += (1.0 - fitnessR);
+					totalDeviationS += (1.0 - fitnessS);
+
+					//Selection: k-selection tournament. Set k to one nonparameter value after testing
+					for (int n = 0; n < N; n++){	//Reproduction, mutation
+
+						tourn_arr[0] = randN(rng);
+						double maxFit = SenderPopulation[tourn_arr[0]].get_fitness();
+						int maxFitInd = 0;
+
+						for (int k_cur = 1; k_cur < k; k_cur++){
+							tourn_arr[k_cur] = randN(rng);
+
+							while (tourn_arr[1] == tourn_arr[0]){ //This will only remove duplicates for k = 2
+								tourn_arr[1] = randN(rng);
+							}
+
+							if (SenderPopulation[tourn_arr[k_cur]].get_fitness() > maxFit){
+								maxFit = SenderPopulation[tourn_arr[k_cur]].get_fitness();
+								maxFitInd = k_cur;
+							}
+						}
+
+						SenderOffspring[n] = SenderPopulation[tourn_arr[maxFitInd]];
+						SenderOffspring[n].reset_fitness();
+						//		SenderOffspring[n].set_quality(q_vals[randQ(rng)]); quality doesn't matter since it is randomly assigned above
+
+						//Mutation for SenderOffspring[n]
+						for (int m = 0; m <= 38; m++){
+							if (ann_mu_S(rng)){	//Mutation to this weight occurs
+								//which ann variable to mutate, size of mutation
+								SenderOffspring[n].ann_mutate(m, ann_mu_size_S(rng));
+							}
+						}
+
+						//Now the same for receivers
+						tourn_arr[0] = randN(rng);
+						maxFit = ReceiverPopulation[tourn_arr[0]].get_fitness();
+						maxFitInd = 0;
+
+						for (int k_cur = 1; k_cur < k; k_cur++){
+							tourn_arr[k_cur] = randN(rng);
+							while (tourn_arr[1] == tourn_arr[0]){ //This will only remove duplicates for k = 2 but since that is what we plan on using, this is fine
+								tourn_arr[1] = randN(rng);
+							}
+							if (ReceiverPopulation[tourn_arr[k_cur]].get_fitness() > maxFit){
+								maxFit = ReceiverPopulation[tourn_arr[k_cur]].get_fitness();
+								maxFitInd = k_cur;
+							}
+						}
+						ReceiverOffspring[n] = ReceiverPopulation[tourn_arr[maxFitInd]];
+						ReceiverOffspring[n].reset_fitness();
+						//Mutation for SenderOffspring[n]
+						for (int m = 0; m <= 38; m++){
+							if (ann_mu_R(rng)){	//Mutation to this weight occurs
+								//which ann variable to mutate, size of mutation
+								ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R(rng));
+							}
+						}
+					}
+
+				}//end indvidual loop
+				//Check total deviation - break loop if it is low enough
+				//Max deviation = 1 * N * N
+				//Total deviation holds how 'wrong' the networks are. N*N = worst, 0 = best
+				//We want to acheive less than targetAccuracy % deviation.
+				if (totalDeviationR < targetDeviation && totalDeviationS < targetDeviation){
+					genAcheived = trainingGen;
+					targetAcheived = true;
+				}
+				//Replace Parents with Offspring
+				SenderPopulation.swap(SenderOffspring);
+				ReceiverPopulation.swap(ReceiverOffspring);
+
+				//std::cout << "r " << totalDeviationR << "\ns " << totalDeviationS <<"\n";
+			}//end trainingGen loop
+		}
+		//	return 2;
+
 		//Write initial ANNs to file - unless 0 reports are requested
 		if (Report_annVar > 0 & Report_annInit == true){
 			for (int i = 0; i < Report_annVar_N; i++){
@@ -368,11 +557,7 @@ int main(int argc, char* argv[]){
 			for (int i = 0; i < Report_annVar_N; i++){
 				annVars<<"\n"<<rep<<","<<0<<",Receiver,"<<i<<","<<0<<","<<0;
 				for (int m = 0; m <= 38; m++){
-					if (m <= 33){
-						annVars<<","<<ReceiverPopulation[i].get_ann(m);
-					} else {
-						annVars<<","<<0;
-					}
+					annVars<<","<<ReceiverPopulation[i].get_ann(m);
 				}
 			}
 		}
@@ -429,21 +614,34 @@ int main(int argc, char* argv[]){
 						//If still nothing, send 0
 					}
 
-					//Now determine if receiver responds.
+					//Receivers
 
-					bool response = 0;
-					if (prob(rng) < R_cur.annR_output(s)){    //If so - respond to signal
-						response = 1;
+					double r = 0;
+					bool r_selected = false;
+					for (int tries = 0; tries < 10; tries++){
+						//Shuffle r_vals
+						std::shuffle(std::begin(r_vals), std::end(r_vals), rng);
+						//Try each value in vector s_vals. This is sampling without replacement.
+						for (int r_try = 0; r_try < r_levels; r_try++){
+							if (prob(rng) < R_cur.annR_output(s, r_vals[r_try])){
+								r = r_vals[r_try];
+								r_selected = true;
+								break;
+							}
+						}
+						if (r_selected == true){
+							break;
+						}
 					}
 
 					//Modify sender fitness
 					double senderCost = cost_function(s, q_cur, c0, c1);
-					double senderBenefit = sender_benefit_function(response);
+					double senderBenefit = sender_benefit_function(r);
 					double senderPayoff = senderBenefit - senderCost;
 					SenderPopulation[nullVecS[j]].change_fitness(senderPayoff);
 
 					// Modify receiver fitness
-					ReceiverPopulation[nullVecR[j]].change_fitness(receiver_benefit_function(response, q_cur));
+					ReceiverPopulation[nullVecR[j]].change_fitness(receiver_benefit_function(r, q_cur));
 
 					//Old - before discrete implementation
 					/*	if (send_0_first == true & prob(rng) > S_cur.annS_output(0.0, q_cur)){    //If so, then signal of 0 is NOT sent. Go on to pick more signals. If not (prob < ann output), then keep signal = 0;
@@ -601,8 +799,8 @@ int main(int argc, char* argv[]){
 				ReceiverOffspring[n] = ReceiverPopulation[tourn_arr[maxFitInd]];
 				ReceiverOffspring[n].reset_fitness();
 
-				//Mutation for SenderOffspring[n]
-				for (int m = 0; m <= 33; m++){
+				//Mutation for ReceiverOffspring[n]
+				for (int m = 0; m <= 38; m++){
 					if (ann_mu_R(rng)){	//Mutation to this weight occurs
 						//which ann variable to mutate, size of mutation
 						ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R(rng));
@@ -680,13 +878,9 @@ int main(int argc, char* argv[]){
 						}
 					}
 					for (int i = 0; i < Report_annVar_N; i++){
-						annVars<<"\n"<<rep<<","<<g<<",Receiver,"<<fittestReceivers[i]<<","<<0<<","<<ReceiverPopulation[fittestReceivers[i]].get_fitness();
+						annVars<<"\n"<<rep<<","<<g<<",Receiver,"<<i<<","<<0<<","<<ReceiverPopulation[i].get_fitness();
 						for (int m = 0; m <= 38; m++){
-							if (m <= 33){
-								annVars<<","<<ReceiverPopulation[fittestReceivers[i]].get_ann(m);
-							} else {
-								annVars<<","<<0;
-							}
+							annVars<<","<<ReceiverPopulation[i].get_ann(m);
 						}
 					}
 				} else { //recordFittestANNs==false
@@ -699,14 +893,9 @@ int main(int argc, char* argv[]){
 					for (int i = 0; i < Report_annVar_N; i++){
 						annVars<<"\n"<<rep<<","<<g<<",Receiver,"<<i<<","<<0<<","<<ReceiverPopulation[i].get_fitness();
 						for (int m = 0; m <= 38; m++){
-							if (m <= 33){
-								annVars<<","<<ReceiverPopulation[i].get_ann(m);
-							} else {
-								annVars<<","<<0;
-							}
+							annVars<<","<<ReceiverPopulation[i].get_ann(m);
 						}
 					}
-
 				}
 
 			}

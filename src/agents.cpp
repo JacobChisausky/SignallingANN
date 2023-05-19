@@ -130,54 +130,60 @@ void Sender::setMultFitness(int interactionPartners){
 
 }
 
-Receiver::Receiver(std::array<double, 34> annR_stats) :
-			annR(annR_stats)
+
+Receiver::Receiver(std::array<double, 39> annR_stats) :
+annR(annR_stats)
 {
 }
 
-double Receiver::annR_output(double s){
+double Receiver::annR_output(double s, double r){
 
-	double n1 = rlu(annR[1] + s);
+	double n1 = rlu(annR[1] + r);
+	double n2 = rlu(annR[2] + s);
 
-	double n2 = rlu(annR[2] + n1 * annR[10]);
-	double n3 = rlu(annR[3] + n1 * annR[11]);
-	double n4 = rlu(annR[4] + n1 * annR[12]);
-	double n5 = rlu(annR[5] + n1 * annR[13]);
+	double n3 = rlu(annR[3] + n1 * annR[11] + n2 * annR[15]);
+	double n4 = rlu(annR[4] + n1 * annR[12] + n2 * annR[16]);
+	double n5 = rlu(annR[5] + n1 * annR[13] + n2 * annR[17]);
+	double n6 = rlu(annR[6] + n1 * annR[14] + n2 * annR[18]);
 
-	double n6 = rlu(annR[6] + n2 * annR[14] + n3 * annR[18] + n4 * annR[22] + n5 * annR[26]);
-	double n7 = rlu(annR[7] + n2 * annR[15] + n3 + annR[19] + n4 * annR[23] + n5 * annR[27]);
-	double n8 = rlu(annR[8] + n2 * annR[16] + n3 * annR[20] + n4 * annR[24] + n5 * annR[28]);
-	double n9 = rlu(annR[9] + n2 * annR[17] + n3 * annR[21] + n4 * annR[25] + n5 * annR[29]);
+	double n7 = rlu(annR[7] + n3 * annR[19] + n4 * annR[23] + n5 * annR[27] + n6 * annR[31]);
+	double n8 = rlu(annR[8] + n3 * annR[20] + n4 * annR[24] + n5 * annR[28] + n6 * annR[32]);
+	double n9 = rlu(annR[9] + n3 * annR[21] + n4 * annR[25] + n5 * annR[29] + n6 * annR[33]);
+	double n10 = rlu(annR[10] + n3 * annR[22] + n4 * annR[26] + n5 * annR[30] + n6 * annR[34]);
 
-	double output = rlu(annR[0] + n6 * annR[30] + n7 * annR[31] + n8 * annR[32] + n9 * annR[33]);
+	double output = rlu(annR[0] + n7 * annR[35] + n8 * annR[36] + n9 * annR[37] + n10 *annR[38]);
 
 	return output;
 }
 
-bool annR_test(int resolution, std::array<double, 34> ann){
+bool annR_test(int resolution, std::array<double, 39> ann){
 
-	double maxOutput = resolution;
+	double maxOutput = resolution*resolution;
 	double totalOutput = 0;
 
 	for (int s_cur = 0; s_cur < resolution; s_cur++){
 		double s = double(s_cur)/double(resolution);
+		for (int r_cur = 0; r_cur < resolution; r_cur++){
+			double r = double(r_cur)/double(resolution);
 
-			double n1 = rlu(ann[1] + s);
 
-			double n2 = rlu(ann[2] + n1 * ann[10]);
-			double n3 = rlu(ann[3] + n1 * ann[11]);
-			double n4 = rlu(ann[4] + n1 * ann[12]);
-			double n5 = rlu(ann[5] + n1 * ann[13]);
+			double n1 = rlu(ann[1] + r);
+			double n2 = rlu(ann[2] + s);
 
-			double n6 = rlu(ann[6] + n2 * ann[14] + n3 * ann[18] + n4 * ann[22] + n5 * ann[26]);
-			double n7 = rlu(ann[7] + n2 * ann[15] + n3 + ann[19] + n4 * ann[23] + n5 * ann[27]);
-			double n8 = rlu(ann[8] + n2 * ann[16] + n3 * ann[20] + n4 * ann[24] + n5 * ann[28]);
-			double n9 = rlu(ann[9] + n2 * ann[17] + n3 * ann[21] + n4 * ann[25] + n5 * ann[29]);
+			double n3 = rlu(ann[3] + n1 * ann[11] + n2 * ann[15]);
+			double n4 = rlu(ann[4] + n1 * ann[12] + n2 * ann[16]);
+			double n5 = rlu(ann[5] + n1 * ann[13] + n2 * ann[17]);
+			double n6 = rlu(ann[6] + n1 * ann[14] + n2 * ann[18]);
 
-			double output = rlu(ann[0] + n6 * ann[30] + n7 * ann[31] + n8 * ann[32] + n9 * ann[33]);
+			double n7 = rlu(ann[7] + n3 * ann[19] + n4 * ann[23] + n5 * ann[27] + n6 * ann[31]);
+			double n8 = rlu(ann[8] + n3 * ann[20] + n4 * ann[24] + n5 * ann[28] + n6 * ann[32]);
+			double n9 = rlu(ann[9] + n3 * ann[21] + n4 * ann[25] + n5 * ann[29] + n6 * ann[33]);
+			double n10 = rlu(ann[10] + n3 * ann[22] + n4 * ann[26] + n5 * ann[30] + n6 * ann[34]);
 
+			double output = rlu(ann[0] + n7 * ann[35] + n8 * ann[36] + n9 * ann[37] + n10 *ann[38]);
 			totalOutput += output;
 
+		}
 	}
 
 	if ((totalOutput > 0) & (totalOutput < maxOutput)){	//This means it is NOT just flat on the top or bottom of phenotype space
@@ -186,8 +192,6 @@ bool annR_test(int resolution, std::array<double, 34> ann){
 		return false;
 	}
 }
-
-
 
 
 void Receiver::ann_mutate(int var, double size){
@@ -199,22 +203,21 @@ void Receiver::ann_mutate(int var, double size){
 	}
 }
 
-void Receiver::change_fitness(double change){
-	fitness += change;
-}
-
 double Receiver::get_fitness(){
 	return fitness;
 }
 
+void Receiver::change_fitness(double change){
+	fitness += change;
+}
+
 void Receiver::reset_fitness(){
-	fitness = 0;
+	fitness = 0.0;
 }
 
 double Receiver::get_ann(int var){
 	return annR[var];
 }
-
 
 double rlu(double input){
 	return std::min(std::max(0.0,input),1.0);
