@@ -42,16 +42,6 @@ double sender_benefit_function(double r){
 	return r;
 }
 
-//Receiver benefit function
-//r has levels.
-//It is best to respond with high r to high q
-//It is best to respond with low r to low q
-//Or - is r = q best?
-//In this case with 2 r levels:
-//r = 1 to q = 1 is good (A1 to T1 in Zollman et al terms)
-//r =0 to q = 0 is good (A2 to T2)
-//Fitness = 1-std(r-q)
-
 double receiver_benefit_function(double r, double q){
 	double benefit = 1.0 - std::abs(r-q);
 	return benefit;
@@ -63,7 +53,7 @@ int main(){
 	//To add:
 	int initOption = 1;
 	int maxTrainingTime = 100000;
-	double targetAccuracy = 0.9;
+	double targetAccuracy = 0.98;
 
 	int replicates = 1;
 
@@ -71,12 +61,12 @@ int main(){
 	int q_levels = 2;		//Number of q values to use
 	int r_levels = 2;		//Number of r values to use. For now only 2. Talk to GR about this.
 
-	double c0 = 1.5;
-	double c1 = 0.5;
+	double c0 = 2.0;
+	double c1 = 0.0;
 
 	int seed = 12345678;
 	double N = 1000;
-	int G = 5000;
+	int G = 2500;
 
 	double mut_rate_ann_S = 0.01;
 	double mut_rate_ann_R = 0.01;
@@ -92,12 +82,14 @@ int main(){
 	double init_ann_range = 1;
 	bool complexInit = 1;
 
-	int Report_annVar = 10;
+	int Report_annVar = 5;
 	int Report_annVar_N = 100;
 	bool Report_annInit = 1;
 	bool recordFittestANNs = 1;
 
-	std::string dataFileName = "testCPP";
+	bool nullReceivers = true;
+
+	std::string dataFileName = "nullReceiversTypoFix";
 	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/data";
 
 
@@ -344,41 +336,6 @@ int main(int argc, char* argv[]){
 			ReceiverOffspring.push_back(Receiver(receiver_ann));		//Offspring = parents in first generation.
 		}
 
-		//Old receiver ANNs
-		//if (nullReceivers == false){
-		/*	for (int i = 0; i < N; i++){	//receivers
-
-			std::array<double, 34> receiver_ann; //Create ann for receiver
-			if (complexInit == false){
-				for (int j = 0; j < receiver_ann.size(); j++){		//Create a random neural network for receivers
-					receiver_ann[j] = init_ann_dist(rng);
-				}
-			} else if (complexInit==true){
-				bool annOkay = false;
-				while (annOkay == false){
-					for (int j = 0; j < receiver_ann.size(); j++){		//Create a random neural network for receivers
-						receiver_ann[j] = init_ann_dist(rng);
-					}
-					//Now test the network and if it is complex enough, set annOkay to true
-					annOkay = annR_test(10, receiver_ann);
-				}
-			}
-
-			ReceiverPopulation.push_back(Receiver(receiver_ann));		//Create sender agent  with that network
-			ReceiverOffspring.push_back(Receiver(receiver_ann));		//Offspring = parents in first generation.
-		}*/
-		/*} else if (nullReceivers == true){
-			//Disable mutations
-
-			//This ANN will give output = input	   //= {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 , 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33};
-			std::array<double, 34> receiver_ann_NULL = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  1,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0 ,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0,  0};
-			for (int i = 0; i < N; i++){
-
-				ReceiverPopulation.push_back(Receiver(receiver_ann_NULL));		//Create sender agent  with that network
-				ReceiverOffspring.push_back(Receiver(receiver_ann_NULL));		//Offspring = parents in first generation.
-			}
-		}*/
-
 		//Now SenderPopulation and ReceiverPopulation are populated with agents of random networks and fitness 0.
 
 		//Initialize option: Honest - take the ANNs and train them to prespecified behavior.
@@ -586,20 +543,13 @@ int main(int argc, char* argv[]){
 					double s = 0;
 
 					//Determine strength of signal sent by signaller
-					//Share for all individuals per generation? No - this could produce a generation with mostly strong signals, another with mostly weak, etc.
-					//vector<double> s_list();
-					//		if (nullSenders == true){	//Null sender behavior ONLY FOR RECEIVERS
-					//They are not actually coevolving yet
-					//This probably needs to be scrapped
-					//			s = q_cur;
-					//		} else {
 
 					bool s_selected = false;
-					for (int tries = 0; tries++; tries < 10){
+					for (int tries = 0; tries < 10; tries++){
 						//Shuffle s_vals
 						std::shuffle(std::begin(s_vals), std::end(s_vals), rng);
 						//Try each value in vector s_vals. This is sampling without replacement.
-						for (int s_try = 0; s_try++; s_try < s_levels){
+						for (int s_try = 0; s_try < s_levels; s_try++){
 							if (s_vals[s_try] < S_cur.annS_output(s_vals[s_try], q_cur)){
 								s = s_vals[s_try];
 								s_selected = true;
@@ -609,9 +559,6 @@ int main(int argc, char* argv[]){
 						if (s_selected == true){
 							break;
 						}
-						//If we select one, break
-						//If not, repeat. For now, try 10 times
-						//If still nothing, send 0
 					}
 
 					//Receivers
@@ -779,32 +726,36 @@ int main(int argc, char* argv[]){
 				//A new sender is born!
 
 				//Now the same for receivers
-				tourn_arr[0] = randN(rng);
-				maxFit = ReceiverPopulation[tourn_arr[0]].get_fitness();
-				maxFitInd = 0;
+				if (nullReceivers == false){
+					tourn_arr[0] = randN(rng);
+					maxFit = ReceiverPopulation[tourn_arr[0]].get_fitness();
+					maxFitInd = 0;
 
-				for (int k_cur = 1; k_cur < k; k_cur++){
-					tourn_arr[k_cur] = randN(rng);
+					for (int k_cur = 1; k_cur < k; k_cur++){
+						tourn_arr[k_cur] = randN(rng);
 
-					while (tourn_arr[1] == tourn_arr[0]){ //This will only remove duplicates for k = 2 but since that is what we plan on using, this is fine
-						tourn_arr[1] = randN(rng);
+						while (tourn_arr[1] == tourn_arr[0]){ //This will only remove duplicates for k = 2 but since that is what we plan on using, this is fine
+							tourn_arr[1] = randN(rng);
+						}
+
+						if (ReceiverPopulation[tourn_arr[k_cur]].get_fitness() > maxFit){
+							maxFit = ReceiverPopulation[tourn_arr[k_cur]].get_fitness();
+							maxFitInd = k_cur;
+						}
 					}
 
-					if (ReceiverPopulation[tourn_arr[k_cur]].get_fitness() > maxFit){
-						maxFit = ReceiverPopulation[tourn_arr[k_cur]].get_fitness();
-						maxFitInd = k_cur;
-					}
-				}
+					ReceiverOffspring[n] = ReceiverPopulation[tourn_arr[maxFitInd]];
+					ReceiverOffspring[n].reset_fitness();
 
-				ReceiverOffspring[n] = ReceiverPopulation[tourn_arr[maxFitInd]];
-				ReceiverOffspring[n].reset_fitness();
-
-				//Mutation for ReceiverOffspring[n]
-				for (int m = 0; m <= 38; m++){
-					if (ann_mu_R(rng)){	//Mutation to this weight occurs
-						//which ann variable to mutate, size of mutation
-						ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R(rng));
+					//Mutation for ReceiverOffspring[n]
+					for (int m = 0; m <= 38; m++){
+						if (ann_mu_R(rng)){	//Mutation to this weight occurs
+							//which ann variable to mutate, size of mutation
+							ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R(rng));
+						}
 					}
+				} else { //Null receivers = true
+					ReceiverOffspring[n] = ReceiverPopulation[n];
 				}
 			}
 
@@ -869,7 +820,6 @@ int main(int argc, char* argv[]){
 							}
 						}
 					}
-
 
 					for (int i = 0; i < Report_annVar_N; i++){ // fittest individuals as found above
 						annVars<<"\n"<<rep<<","<<g<<",Sender,"<<fittestSenders[i]<<","<<SenderPopulation[fittestSenders[i]].get_quality()<<","<<SenderPopulation[fittestSenders[i]].get_fitness();
