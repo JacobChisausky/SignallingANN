@@ -10,6 +10,11 @@
 //What if responding is competetive? I.e., receivers can only respond to one sender
 //I expect that this would have very different dynamics.
 
+//3 s levels is weird because s = 0.5 --> receivers have no correct response to this.
+//So s_levels should always be even
+
+//To do - add a continuous option. If _levels are -1, then use continuous levels
+
 #include <iostream>
 #include <iostream>
 #include <vector>
@@ -20,8 +25,8 @@
 #include <string>
 
 #include "parameters.h"
-#include "agents.h"
 
+#include "agents.h"
 
 //Cost function - since discrete model
 double cost_function(double s, double q, double cMax, double cMin){
@@ -56,7 +61,7 @@ int main(){
 	int replicates = 1;
 
 	int s_levels = 2;		//Number of s values to use
-	int q_levels = 2;		//Number of q values to use
+	int q_levels = 3;		//Number of q values to use
 	int r_levels = 2;		//Number of r values to use.
 
 	double cMax = 0.7;		//Cost of s = 1 to q = 0
@@ -65,7 +70,7 @@ int main(){
 	double m = 0.25;		//Percent q=1 in pop
 
 	int seed = 12345678;
-	double N = 1000;
+	double N = 10;
 	int G = 2500;
 
 	double mut_rate_ann_S = 0.01;
@@ -92,7 +97,7 @@ int main(){
 	std::string dataFileName = "test_hybrid";
 	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/data";
 
- */
+	*/
 //json version
 int main(int argc, char* argv[]){
 	// getting params from the parameter file via json
@@ -194,36 +199,51 @@ int main(int argc, char* argv[]){
 
 	//Determine what values of s and q are used
 	//These are evenly spaced from 0 to 1
-	if (s_levels < 2 || q_levels < 2 || r_levels < 2){
-		std::cout << "s_levels and q_levels and r_levels must be > 1";
-		return 97;
-	}
+	//if (s_levels < 2 || q_levels < 2 || r_levels < 2){
+	//	std::cout << "s_levels and q_levels and r_levels must be > 1";
+	//	return 97;
+	//}
 
 	std::vector<double> s_vals;
 	double s_increment = 1.0/double(s_levels-1);
-	for (double val = 0.0; val <= 1.0; val += s_increment){
-		s_vals.push_back(val);
-	}
-	if (s_vals.size() != s_levels){
-		return 88;
+
+	if (s_levels != -1){
+		for (double val = 0.0; val <= 1.0; val += s_increment){
+			s_vals.push_back(val);
+		}
+		if (s_vals.size() != s_levels){
+			return 88;
+		}
+	} else {
+		s_vals.push_back(-1);
 	}
 
 	std::vector<double> q_vals;
 	double q_increment = 1.0/double(q_levels-1);
-	for (double val = 0.0; val <= 1.0; val += q_increment){
-		q_vals.push_back(val);
-	}
-	if (q_vals.size() != q_levels){
-		return 88;
+
+	if (q_levels != -1){
+		for (double val = 0.0; val <= 1.0; val += q_increment){
+			q_vals.push_back(val);
+		}
+		if (q_vals.size() != q_levels){
+			return 88;
+		}
+	} else {
+		q_vals.push_back(-1);
 	}
 
 	std::vector<double> r_vals;
 	double r_increment = 1.0/double(r_levels-1);
-	for (double val = 0.0; val <= 1.0; val += r_increment){
-		r_vals.push_back(val);
-	}
-	if (r_vals.size() != r_levels){
-		return 88;
+
+	if (r_levels != -1){
+		for (double val = 0.0; val <= 1.0; val += r_increment){
+			r_vals.push_back(val);
+		}
+		if (r_vals.size() != r_levels){
+			return 88;
+		}
+	} else {
+		r_vals.push_back(-1);
 	}
 
 
@@ -345,10 +365,51 @@ int main(int argc, char* argv[]){
 			//What if we init at hybrid equilibrium - q = 0, prob sending =
 
 			//Signaller: s = q.
-			//A1 with Pr = q
+			//Receivers payoff is difference between s and r
+
 
 			double maxDeviation = N;
-			double targetDeviation = (1.0-targetAccuracy)*maxDeviation;
+			//double targetDeviation = (1.0-targetAccuracy)*maxDeviation;
+			// target deviation for senders - what is the best that senders can do?
+			// if s_levls and q_levels are different, senders need to minimize difference between s and q
+
+			double bestFitnessS = 0.0;
+			// iterate through all q and determine best sender move
+			for (int q = 0; q < q_levels; q++){
+				//Best sender fit for this level? Find s that minimizes distance between s and q
+				double minDist = 10.0;
+				double bestS = 10;
+
+				for (int s = 0; s < s_levels; s++){
+					double s_q_dist = std::abs(q_vals[q] - s_vals[s]);
+					if (s_q_dist < minDist){
+						bestS = s;
+						minDist = s_q_dist;
+					}
+				}
+				bestFitnessS += (1.0 - minDist);
+			} //After the q for loop, bestFit holds the maximim possible fitness for a sender in the intialize routine
+
+			double targetFitnessS = (targetAccuracy)*(bestFitnessS/double(q_levels))*N;
+
+			double bestFitnessR = 0.0;
+			// iterate through all q and determine best sender move
+			for (int s = 0; s < s_levels; s++){
+				//Best receiver fit for this level? Find r that minimizes distance between r and s
+				double minDist = 10.0;
+				double bestR = 10;
+
+				for (int r = 0; r < r_levels; r++){
+					double r_s_dist = std::abs(s_vals[s] - r_vals[r]);
+					if (r_s_dist < minDist){
+						bestR = r;
+						minDist = r_s_dist;
+					}
+				}
+				bestFitnessR += (1.0 - minDist);
+			} //After the q for loop, bestFit holds the maximim possible fitness for a sender in the intialize routine
+			double targetFitnessR = (targetAccuracy)*(bestFitnessR/double(s_levels))*N;
+
 			bool targetAcheived = false;
 
 			//Train signallers
@@ -358,8 +419,8 @@ int main(int argc, char* argv[]){
 				}
 
 				//Total deviation from perfect performance for receivers and senders
-				double totalDeviationR = 0.0;
-				double totalDeviationS = 0.0;
+				double totalFitnessR = 0.0;
+				double totalFitnessS = 0.0;
 
 				for (int i = 0; i < N; i++){
 
@@ -375,6 +436,13 @@ int main(int argc, char* argv[]){
 					double s = 0;
 					bool s_selected = false;
 					for (int tries = 0; tries < tries_max; tries++){
+						//If s is continuous - produce a new vector of random s vals
+						//question - how many continuous values to try?
+						//Could be negative value in s_levels. If s_levels = -100, try 100?
+						//Or add a parameter for number of tries for each s q r. Keep default 10.
+						//Another option: allow s_levels to stay as it is. If continuous, just assign random vals each individual to all of s_vals
+
+						//here
 						//Shuffle s_vals
 						std::shuffle(std::begin(s_vals), std::end(s_vals), rng);
 						//Try each value in vector s_vals. This is sampling without replacement.
@@ -393,7 +461,7 @@ int main(int argc, char* argv[]){
 
 					//s is now selected.
 					//Fitness = 1 - abs(q_rand - s)
-					double fitnessS = 1.0 - std::abs(q_rand - s);
+					double fitnessS = 1.0 - std::abs(q_rand - s); //Senders are just tryng to match s to q
 					SenderPopulation[i].change_fitness(fitnessS);
 
 					//Receivers
@@ -422,12 +490,14 @@ int main(int argc, char* argv[]){
 						}
 					}
 
-					double fitnessR = receiver_benefit_function(r, s_rand);	//Giving s and NOT q to the benefit function. At honest state, s = q.
+					double fitnessR = receiver_benefit_function(r, s_rand);
 					ReceiverPopulation[i].change_fitness(fitnessR);
 
+					std::cout << "q: " << q_rand << " s: " << s << " r: " << r << " senderFit: " << fitnessS << " receiverFit: " << fitnessR << "\n";
+
 					//Total deviation for receivers and senders
-					totalDeviationR += (1.0 - fitnessR);
-					totalDeviationS += (1.0 - fitnessS);
+					totalFitnessR += fitnessR;
+					totalFitnessS += fitnessS;
 
 					//Selection: k-selection tournament. Set k to one nonparameter value after testing
 					for (int n = 0; n < N; n++){	//Reproduction, mutation
@@ -489,20 +559,24 @@ int main(int argc, char* argv[]){
 						}
 					}
 
+
 				}//end indvidual loop
 				//Check total deviation - break loop if it is low enough
 				//Max deviation = 1 * N * N
 				//Total deviation holds how 'wrong' the networks are. N*N = worst, 0 = best
 				//We want to acheive less than targetAccuracy % deviation.
-				if (totalDeviationR < targetDeviation && totalDeviationS < targetDeviation){
+
+				//std::cout << "targetFitnessS: " << targetFitnessS << " targetFitnessR: " << targetFitnessR << "\t\tfitnessS: " << totalFitnessS << "\tfitnessR: " << totalFitnessR << "\n";
+
+				if (totalFitnessR >= targetFitnessR && totalFitnessS >= targetFitnessS){
 					genAcheived = trainingGen;
 					targetAcheived = true;
 				}
+
 				//Replace Parents with Offspring
 				SenderPopulation.swap(SenderOffspring);
 				ReceiverPopulation.swap(ReceiverOffspring);
 
-				//std::cout << "r " << totalDeviationR << "\ns " << totalDeviationS <<"\n";
 			}//end trainingGen loop
 		}
 

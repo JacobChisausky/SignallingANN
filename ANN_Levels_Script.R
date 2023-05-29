@@ -1,6 +1,10 @@
 #The point of this code is to read ANN stats from the cpp program and allow us to visualize the phenotypes
 #set.seed(1234567) 
 
+#Exper 1 is looking at multiple s vales
+#Exper 2 is investigating what mut rates and steps promote hybrid equilibria
+
+
 library(ggplot2)
 library(plotly)
 library(reshape2)
@@ -306,7 +310,7 @@ calcProbs<-function(phenotype,tries_max){
 
 #Test 1: Initial ####
 directory_test1 <- "C:/Users/owner/eclipse-workspace/SignallingANN/data"
-directory_test1 <- "C:/Users/owner/Documents/DONE/testCodeNew"
+directory_test1 <- "C:/Users/owner/Documents/DONE/hybrid_mutRates"
 annFiles <- list.files(directory_test1,"*annVars*")
 paramFiles <- list.files(directory_test1,"*params_t*")
 annFiles
@@ -325,7 +329,7 @@ unique(annFile$gen)
 #for (G in unique(annFile$gen)){
 #for (num in 1:length(annFiles)){
 annFiles
-num<-13
+num<-1
 annFile <- read.csv(paste0(directory_test1,"/",annFiles[num]))
 paramFile <- read.csv(paste0(directory_test1,"/",paramFiles[num]))
 s_vals<-get_levels(paramFile$s_levels)
@@ -335,12 +339,10 @@ r_vals<-get_levels(paramFile$r_levels)
 sFile <- subset(annFile,indType == "Sender")
 
 unique(annFile$gen)
-G<-2500
+G<-max(annFile$gen)
 
 sGen <- subset(sFile,gen==G)
 rGen <- subset(rFile,gen==G)
-
-sEnd <- subset(sFile,gen==max(sFile$gen))
 
 #Put individuals together
 dataMult<-data.frame()
@@ -418,31 +420,12 @@ ggsave(plot=p,paste0(num,"_",G/10000,"_R.png"),
        device="png",path=directory_test1,height=8,width=10,unit="in")
 
 
+#### Discrete phenotypes - probabilities ####
+unique(sFile$gen)
+G<-20000
+sGen <- subset(sFile,gen==G)
+rGen <- subset(rFile,gen==G)
 
-# Writing code to change display results ####
-tries<-paramFile$tries_max  
-n<-1
-n_annS<-as.numeric(sGen[n,7:45])
-
-data<-senderPhenotypeDiscrete(paramFile$s_levels,
-                              paramFile$q_levels,
-                              n_annS)
-data
-
-ggplot(data) +
-  geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=5) + 
-  scale_color_viridis_c() +
-  theme_bw() 
-
-
-d<-senderPhenotypeDiscrete(2,2,n_annS) 
-probs<-calcProbs(d,10)
-
-ggplot(probs) + geom_boxplot(aes(x=s,group=s,y=probFinal)) +
-  facet_grid(~q) +
-  theme_bw()
-
-#Discrete phenotypes - probabilities ####
 probsAll<-data.frame()
 for (n in 1:nrow(sGen)){
   n_annS<-as.numeric(sGen[n,7:45])
@@ -486,4 +469,297 @@ ggplot(subset(probsAll,strength==1)) +
   #Expected alpha
   geom_point(aes(y=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),x=0,size=5,color="blue")
 
+#### Discrete phenotypes - collate files ####
+#for (G in unique(annFile$gen)){
+unique(annFile$gen)
+G<-20000
+probsMaster<-data.frame()
+for (num in 1:length(annFiles)){
+  annFile <- read.csv(paste0(directory_test1,"/",annFiles[num]))
+  paramFile <- read.csv(paste0(directory_test1,"/",paramFiles[num]))
+  s_vals<-get_levels(paramFile$s_levels)
+  q_vals<-get_levels(paramFile$q_levels)
+  r_vals<-get_levels(paramFile$r_levels)
+  sFile <- subset(annFile,indType == "Sender")
+  rFile <- subset(annFile,indType == "Receiver")
+  sGen <- subset(sFile,gen==G)
+  rGen <- subset(rFile,gen==G)
   
+  probsAll<-data.frame()
+  for (n in 1:nrow(sGen)){
+    n_annS<-as.numeric(sGen[n,7:45])
+    d<-senderPhenotypeDiscrete(2,2,n_annS) 
+    probs<-calcProbs(d,10)
+    colnames(probs)<-c("state","strength","output","probFinal")
+    probs$n <- n
+    probs$indType = "Sender"
+    probsAll<-rbind(probsAll,probs)
+  }
+  for (n in 1:nrow(rGen)){
+    n_annR<-as.numeric(rGen[n,7:45])
+    d<-receiverPhenotypeDiscrete(2,2,n_annR) 
+    probs<-calcProbs(d,10)
+    colnames(probs)<-c("state","strength","output","probFinal")
+    probs$n <- n
+    probs$indType = "Receiver"
+    probs
+    probsAll<-rbind(probsAll,probs)
+  }
+  probsAll$num<-num
+  probsAll$mut_rate_ann <- paramFile$mut_rate_ann_S
+  probsAll$mut_step_ann <- paramFile$mut_step_ann_S
+  
+  probsMaster<-rbind(probsMaster,probsAll)
+}
+
+paramFile
+
+ggplot(subset(probsMaster,strength==1)) + 
+  geom_jitter(aes(x=state,y=probFinal),height=0,width=0.15,alpha=.4) +
+  theme_bw() +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    col = "black",
+    size = 3,
+    shape = 24,
+    fill = "red",
+    aes(x=state,y=probFinal) ) + 
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  #Expected beta
+  geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="blue") +
+  #Expected alpha
+  geom_point(aes(y=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),x=0,size=5,color="blue") +
+  facet_grid(mut_rate_ann+indType~mut_step_ann)
+
+#Exper 1: More s levels ####
+#May have too low of mut rates or steps for this to work...
+directory_exper1 <- "C:/Users/owner/Documents/DONE/exper1b_many_s"
+annFiles <- list.files(directory_exper1,"*annVars*")
+paramFiles <- list.files(directory_exper1,pattern = ".*_params_.*\\.csv$")
+
+annFile <- read.csv(paste0(directory_exper1,"/",annFiles[2]))
+paramsAll<-data.frame()
+for (i in paramFiles){
+  paramFile <- read.csv(paste0(directory_exper1,"/",i))
+  paramsAll<-rbind(paramsAll,paramFile)
+}
+paramsAll
+
+unique(annFile$gen)
+
+
+#for (G in unique(annFile$gen)){
+#for (num in 1:length(annFiles)){
+annFiles
+num<-1
+annFile <- read.csv(paste0(directory_exper1,"/",annFiles[num]))
+paramFile <- read.csv(paste0(directory_exper1,"/",paramFiles[num]))
+s_vals<-get_levels(paramFile$s_levels)
+q_vals<-get_levels(paramFile$q_levels)
+r_vals<-get_levels(paramFile$r_levels)
+
+
+sFile <- subset(annFile,indType == "Sender")
+
+unique(annFile$gen)
+G<-max(annFile$gen)
+
+sGen <- subset(sFile,gen==G)
+rGen <- subset(rFile,gen==G)
+
+#Put individuals together
+dataMult<-data.frame()
+for (n in 1:50){
+  n_annS<-as.numeric(sGen[n,7:45])
+  data<-senderPhenotypeDiscrete(2,2,n_annS)
+  data$n <- n  
+  dataMult<-rbind(dataMult,data)
+}
+p <- ggplot(dataMult) +
+  geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=4) + 
+  scale_color_viridis_c() +
+  theme_bw() +
+  facet_wrap(~n) +
+  labs(title=paste0("Senders: ",num)) +
+  labs(subtitle=paste0("gen = ",G,
+                       "\nk = ",paramFile$k,
+                       "\ncMin = ",paramFile$cMin,
+                       "\ncMax = ",paramFile$cMax
+  ))
+p
+
+paramFile
+
+
+ggsave(plot=p,paste0(num,"_",G/10000,"_S.png"),
+       device="png",path=directory_exper1,height=8,width=10,unit="in")
+
+
+if (1==2){
+  n<-1
+  n_annS<-as.numeric(sGen[n,7:45])
+  
+  #senderANN_printSurface(30,n_annS)
+  data<-senderPhenotype(70,70,n_annS)
+  ggplot(data) +
+    geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
+    scale_color_viridis_c() +
+    theme_bw()
+}
+
+
+#Receivers
+paramFile$cMax
+paramFile$cMin
+
+unique(annFile$gen)
+G<-2500
+
+rFile <- subset(annFile,indType == "Receiver")
+rGen <- subset(rFile,gen==G)
+rEnd <- subset(rFile,gen==max(rFile$gen))
+
+dataMult<-data.frame()
+for (n in 1:40){
+  n_annR<-as.numeric(rGen[n,7:45])
+  data<-receiverPhenotypeDiscrete(2,2,n_annR)
+  data$n <- n  
+  dataMult<-rbind(dataMult,data)
+}
+p <- ggplot(dataMult) +
+  geom_point(aes(x=s,y=r,color=output),alpha=0.8,size=4) + 
+  scale_color_viridis_c() +
+  theme_bw() +
+  facet_wrap(~n) +
+  labs(title=paste0("Receivers: ",num)) +
+  labs(subtitle=paste0("gen = ",G,
+                       "\nk = ",paramFile$k,
+                       "\ncMin = ",paramFile$cMin,
+                       "\ncMax = ",paramFile$cMax
+  ))
+p
+
+ggsave(plot=p,paste0(num,"_",G/10000,"_R.png"),
+       device="png",path=directory_exper1,height=8,width=10,unit="in")
+
+
+#### Discrete phenotypes - probabilities ####
+unique(sFile$gen)
+G<-20000
+sGen <- subset(sFile,gen==G)
+rGen <- subset(rFile,gen==G)
+
+probsAll<-data.frame()
+for (n in 1:nrow(sGen)){
+  n_annS<-as.numeric(sGen[n,7:45])
+  d<-senderPhenotypeDiscrete(2,2,n_annS) 
+  probs<-calcProbs(d,10)
+  colnames(probs)<-c("state","strength","output","probFinal")
+  probs$n <- n
+  probs$indType = "Sender"
+  probsAll<-rbind(probsAll,probs)
+}
+for (n in 1:nrow(rGen)){
+  n_annR<-as.numeric(rGen[n,7:45])
+  d<-receiverPhenotypeDiscrete(2,2,n_annR) 
+  probs<-calcProbs(d,10)
+  colnames(probs)<-c("state","strength","output","probFinal")
+  probs$n <- n
+  probs$indType = "Receiver"
+  probs
+  probsAll<-rbind(probsAll,probs)
+}
+
+# Plot for all levels = 2
+ggplot(subset(probsAll,strength==1)) + 
+  geom_jitter(aes(x=state,y=probFinal),height=0,width=0.05,alpha=.6) +
+  facet_grid(indType~.) +
+  theme_bw() +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    col = "black",
+    size = 3,
+    shape = 24,
+    fill = "red",
+    aes(x=state,y=probFinal) ) + 
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  #Expected beta
+  geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="blue") +
+  #Expected alpha
+  geom_point(aes(y=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),x=0,size=5,color="blue")
+
+#### Discrete phenotypes - collate files ####
+#for (G in unique(annFile$gen)){
+unique(annFile$gen)
+G<-20000
+probsMaster<-data.frame()
+for (num in 1:length(annFiles)){
+  annFile <- read.csv(paste0(directory_exper1,"/",annFiles[num]))
+  paramFile <- read.csv(paste0(directory_exper1,"/",paramFiles[num]))
+  s_vals<-get_levels(paramFile$s_levels)
+  q_vals<-get_levels(paramFile$q_levels)
+  r_vals<-get_levels(paramFile$r_levels)
+  sFile <- subset(annFile,indType == "Sender")
+  rFile <- subset(annFile,indType == "Receiver")
+  sGen <- subset(sFile,gen==G)
+  rGen <- subset(rFile,gen==G)
+  
+  probsAll<-data.frame()
+  for (n in 1:nrow(sGen)){
+    n_annS<-as.numeric(sGen[n,7:45])
+    d<-senderPhenotypeDiscrete(2,2,n_annS) 
+    probs<-calcProbs(d,10)
+    colnames(probs)<-c("state","strength","output","probFinal")
+    probs$n <- n
+    probs$indType = "Sender"
+    probsAll<-rbind(probsAll,probs)
+  }
+  for (n in 1:nrow(rGen)){
+    n_annR<-as.numeric(rGen[n,7:45])
+    d<-receiverPhenotypeDiscrete(2,2,n_annR) 
+    probs<-calcProbs(d,10)
+    colnames(probs)<-c("state","strength","output","probFinal")
+    probs$n <- n
+    probs$indType = "Receiver"
+    probs
+    probsAll<-rbind(probsAll,probs)
+  }
+  probsAll$num<-num
+  probsAll$mut_rate_ann <- paramFile$mut_rate_ann_S
+  probsAll$mut_step_ann <- paramFile$mut_step_ann_S
+  
+  probsMaster<-rbind(probsMaster,probsAll)
+}
+
+paramFile
+
+ggplot(subset(probsMaster,strength==1)) + 
+  geom_jitter(aes(x=state,y=probFinal),height=0,width=0.15,alpha=.4) +
+  theme_bw() +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    col = "black",
+    size = 3,
+    shape = 24,
+    fill = "red",
+    aes(x=state,y=probFinal) ) + 
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  #Expected beta
+  geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="blue") +
+  #Expected alpha
+  geom_point(aes(y=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),x=0,size=5,color="blue") +
+  facet_grid(mut_rate_ann+indType~mut_step_ann)
+
+
