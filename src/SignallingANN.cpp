@@ -16,42 +16,112 @@
 //To do - add a continuous option. If _levels are -1, then use continuous levels
 
 #include <iostream>
-#include <iostream>
+#include <chrono>
 #include <vector>
 #include <algorithm>
 #include <random>
 #include <ctime>
 #include <fstream>
 #include <string>
-
-#include "parameters.h"
-
 #include "agents.h"
 
+//#include "parameters.h"
+
+
+double select_s_Sender(Sender& agent, double q, int s_levels, std::vector<double> s_vals, int tries_max, std::uniform_real_distribution<double> prob, std::default_random_engine& rng) {
+
+	double s = 0;
+
+	if (s_levels > 0){
+		for (int tries = 0; tries < tries_max; tries++){
+
+			//Shuffle s_vals
+			std::shuffle(std::begin(s_vals), std::end(s_vals), rng);
+			//Try each value in vector s_vals. This is sampling without replacement.
+			for (int s_try = 0; s_try < s_levels; s_try++){
+
+				if (prob(rng) < agent.annS_output(s_vals[s_try], q)){
+					s = s_vals[s_try];
+					break;
+				}
+			}
+		}
+	} else { //Negative s_levels. This means continuous.
+		int tries_max_continuous = -1*s_levels;
+		for (int tries = 0; tries < tries_max_continuous; tries++){
+
+			//Try random values from flat continuous distribution
+			double s_try = prob(rng);
+			if (prob(rng) < agent.annS_output(s_try, q)){
+				s = s_try;
+				break;
+			}
+		}
+	}
+	return s;
+}
+
+
+double select_r_Receiver(Receiver& agent, double s, int r_levels, std::vector<double> r_vals, int tries_max, std::uniform_real_distribution<double> prob, std::default_random_engine& rng) {
+
+	double r = 0;
+
+	if (r_levels > 0){
+		for (int tries = 0; tries < tries_max; tries++){
+
+			//Shuffle s_vals
+			std::shuffle(std::begin(r_vals), std::end(r_vals), rng);
+			//Try each value in vector s_vals. This is sampling without replacement.
+			for (int r_try = 0; r_try < r_levels; r_try++){
+
+				if (prob(rng) < agent.annR_output(r_vals[r_try], s)){
+					r = r_vals[r_try];
+					break;
+				}
+			}
+		}
+	} else { //Negative s_levels. This means continuous.
+		int tries_max_continuous = -1*r_levels;
+		for (int tries = 0; tries < tries_max_continuous; tries++){
+
+			//Try random values from flat continuous distribution
+			double r_try = prob(rng);
+			if (prob(rng) < agent.annR_output(r_try, s)){
+				r = r_try;
+				break;
+			}
+		}
+	}
+	return r;
+}
+
 //Cost function - since discrete model
-double cost_function(double s, double q, double cMax, double cMin){
+double cost_function(double s, double q, double p_s, double p_q, double cMax, double cMin){
 	//cMin = the cost of a s = 1 signal to q = 1
 	//cMax = the cost of a s = 1 signal to q = 0
-	double cost = (1.0 - q)*(s*cMax - s*cMin) + (s*cMin);
+	double sPow = pow(s,p_s);
+	double qPow = pow(q,p_q);
+
+	double cost = (1.0 - qPow)*(sPow*cMax - sPow*cMin) + (sPow*cMin);
 	return cost;
 }
 
-double sender_benefit_function(double r){
+double sender_benefit_function(double r, double p_rS){
 	//Can easily implement differential benefits here (b1 and b2)
 	//For r_levels = 2: this is fine.
 	//As we increase r_levels, we may need to tweak this.
 	//Otherwise, sender benefits will be low relative to costs.
 	//Adding a parameter to increase benefits (like 2.0*r) might be the easiest solution.
-
-	return r;
-}
-
-double receiver_benefit_function(double r, double q){
-	double benefit = 1.0 - std::abs(r-q);
+	double benefit = pow(r,p_rS);
 	return benefit;
 }
 
-/*
+double receiver_benefit_function(double r, double q, double p_rR){
+	double benefit = 1.0 - pow(std::abs(r-q),p_rR);
+	return benefit;
+}
+
+
 int main(){
 
 	int initOption = 1;
@@ -60,17 +130,27 @@ int main(){
 
 	int replicates = 1;
 
-	int s_levels = 2;		//Number of s values to use
-	int q_levels = 3;		//Number of q values to use
-	int r_levels = 2;		//Number of r values to use.
+	int s_levels = -200;		//Number of s values to use. If negative, continuous with that many attempts before 0 is chosen.
+	int q_levels = 5;		//Number of q values to use. If negative, continuous with that many attempts before 0 is chosen.
+	int r_levels = -200;		//Number of r values to use. If negative, continuous with that many attempts before 0 is chosen.
 
-	double cMax = 0.7;		//Cost of s = 1 to q = 0
+	double cMax = 1.5;		//Cost of s = 1 to q = 0
 	double cMin = 0.1;		//Cost of s = 1 to q = 1
+
+	double p_q = 1.0;
+	double p_s = 1.0;
+	double p_rS = 1.0;
+	double p_rR = 1.0;
 
 	double m = 0.25;		//Percent q=1 in pop
 
-	int seed = 12345678;
-	double N = 10;
+	//int seed = 12345628;
+	auto currentTime = std::chrono::system_clock::now();
+	auto currentTimeInSeconds = std::chrono::time_point_cast<std::chrono::seconds>(currentTime);
+	auto timeInSeconds = currentTimeInSeconds.time_since_epoch().count();
+	int seed = timeInSeconds;
+
+	double N = 1000;
 	int G = 2500;
 
 	double mut_rate_ann_S = 0.01;
@@ -87,17 +167,19 @@ int main(){
 	bool complexInit = 1;
 
 	int Report_annVar = 5;
-	int Report_annVar_N = 100;
+	int Report_annVar_N = N;
 	bool Report_annInit = 1;
 	bool recordFittestANNs = 1;
 
 	bool nullReceivers = false;
 	bool nullSenders = false;
 
-	std::string dataFileName = "test_hybrid";
-	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/data";
+	std::string dataFileName = "test";
+	//	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/data";
+	std::string dataFileFolder = "C:/Users/owner/Documents/trash";
 
-	*/
+
+	/*
 //json version
 int main(int argc, char* argv[]){
 	// getting params from the parameter file via json
@@ -118,6 +200,13 @@ int main(int argc, char* argv[]){
 	int r_levels = params.r_levels;
 	double cMax = params.cMax;
 	double cMin = params.cMin;
+
+	//Curvature parameters
+	double p_q = params.p_q;
+	double p_s = params.p_s;
+	double p_rS = params.p_rS;
+	double p_rR = params.p_rR;
+
 	double m = params.m;
 	int seed = params.seed;
 	double N = params.N;
@@ -139,7 +228,7 @@ int main(int argc, char* argv[]){
 	bool nullSenders = params.nullSenders;
 	std::string dataFileName = params.dataFileName;
 	std::string dataFileFolder = params.dataFileFolder;
-
+	 */
 
 	//_________End parameter input
 
@@ -193,9 +282,9 @@ int main(int argc, char* argv[]){
 	annVars << "rep,gen,indType,indNum,quality,fitness,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38";
 	//		dataLog << "rep,gen,ind,indType,sendType,strategy,alphaBeta,fitness";
 	//paramFile << "replicates,s_levels,q_levels,cMax,cMin,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,dataFileName,dataFileFolder";
-	paramFile << "initOption,maxTrainingTime,targetAccuracy,replicates,s_levels,q_levels,r_levels,cMax,cMin,m,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,nullReceivers,nullSenders,tries_max,dataFileName ,dataFileFolder";
+	paramFile << "initOption,maxTrainingTime,targetAccuracy,replicates,s_levels,q_levels,r_levels,cMax,cMin,p_s,p_q,p_rS,p_rR,m,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,nullReceivers,nullSenders,tries_max,dataFileName ,dataFileFolder";
 	//paramFile << "\n"<< std::to_string(replicates) << "," << std::to_string(s_levels) << "," << std::to_string(q_levels) << "," << std::to_string(cMax)<<","<<std::to_string(cMin)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(k)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(complexInit)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<std::to_string(recordFittestANNs)<<","<<dataFileName<<","<<dataFileFolder;
-	paramFile << "\n" << std::to_string(initOption) <<  ","<< std::to_string(maxTrainingTime) <<  ","<< std::to_string(targetAccuracy) <<  ","<< std::to_string(replicates) <<  ","<< std::to_string(s_levels) <<  ","<< std::to_string(q_levels) <<  ","<< std::to_string(r_levels) <<  ","<< std::to_string(cMax) <<  ","<< std::to_string(cMin) <<  ","<< std::to_string(m) <<  ","<< std::to_string(seed) <<  ","<< std::to_string(N) <<  ","<< std::to_string(G) <<  ","<< std::to_string(mut_rate_ann_S) <<  ","<< std::to_string(mut_rate_ann_R) <<  ","<< std::to_string(mut_step_ann_S) <<  ","<< std::to_string(mut_step_ann_R) <<  ","<< std::to_string(interactionPartners) <<  ","<< std::to_string(k) <<  ","<< std::to_string(init_ann_range) <<  ","<< std::to_string(complexInit) <<  ","<< std::to_string(Report_annVar) <<  ","<< std::to_string(Report_annVar_N) <<  ","<< std::to_string(Report_annInit) <<  ","<< std::to_string(recordFittestANNs) <<  ","<< std::to_string(nullReceivers)<<  ","<< std::to_string(nullSenders) << ","<< std::to_string(tries_max) <<  ","<<dataFileName<<  ","<<dataFileFolder;
+	paramFile << "\n" << std::to_string(initOption) <<  ","<< std::to_string(maxTrainingTime) <<  ","<< std::to_string(targetAccuracy) <<  ","<< std::to_string(replicates) <<  ","<< std::to_string(s_levels) <<  ","<< std::to_string(q_levels) <<  ","<< std::to_string(r_levels) <<  ","<< std::to_string(cMax) <<  ","<< std::to_string(cMin) << "," << std::to_string(p_s) << "," << std::to_string(p_q) << "," << std::to_string(p_rS) << "," << std::to_string(p_rR) << "," << std::to_string(m) <<  ","<< std::to_string(seed) <<  ","<< std::to_string(N) <<  ","<< std::to_string(G) <<  ","<< std::to_string(mut_rate_ann_S) <<  ","<< std::to_string(mut_rate_ann_R) <<  ","<< std::to_string(mut_step_ann_S) <<  ","<< std::to_string(mut_step_ann_R) <<  ","<< std::to_string(interactionPartners) <<  ","<< std::to_string(k) <<  ","<< std::to_string(init_ann_range) <<  ","<< std::to_string(complexInit) <<  ","<< std::to_string(Report_annVar) <<  ","<< std::to_string(Report_annVar_N) <<  ","<< std::to_string(Report_annInit) <<  ","<< std::to_string(recordFittestANNs) <<  ","<< std::to_string(nullReceivers)<<  ","<< std::to_string(nullSenders) << ","<< std::to_string(tries_max) <<  ","<<dataFileName<<  ","<<dataFileFolder;
 
 	//Determine what values of s and q are used
 	//These are evenly spaced from 0 to 1
@@ -207,45 +296,63 @@ int main(int argc, char* argv[]){
 	std::vector<double> s_vals;
 	double s_increment = 1.0/double(s_levels-1);
 
-	if (s_levels != -1){
-		for (double val = 0.0; val <= 1.0; val += s_increment){
+	if (s_levels > 0){
+		double val = 0.0;
+		for (int increment = 0; increment < s_levels; increment++){
 			s_vals.push_back(val);
+
+			val += s_increment;
 		}
 		if (s_vals.size() != s_levels){
 			return 88;
 		}
-	} else {
-		s_vals.push_back(-1);
+	} else { // continuous dist - approximate a continuous distriubiton for a few purposes
+		double val = 0.0;
+		for (int increment = 0; increment < 100; increment++){
+			s_vals.push_back(val);
+			val += 0.01;
+		}
 	}
 
 	std::vector<double> q_vals;
 	double q_increment = 1.0/double(q_levels-1);
 
-	if (q_levels != -1){
-		for (double val = 0.0; val <= 1.0; val += q_increment){
+	if (q_levels > 0){
+		double val = 0.0;
+		for (int increment = 0; increment < q_levels; increment++){
 			q_vals.push_back(val);
+			val += q_increment;
 		}
 		if (q_vals.size() != q_levels){
 			return 88;
 		}
 	} else {
-		q_vals.push_back(-1);
+		double val = 0.0;
+		for (int increment = 0; increment < 100; increment++){
+			q_vals.push_back(val);
+			val += 0.01;
+		}
 	}
 
 	std::vector<double> r_vals;
 	double r_increment = 1.0/double(r_levels-1);
 
-	if (r_levels != -1){
-		for (double val = 0.0; val <= 1.0; val += r_increment){
+	if (r_levels > 0){
+		double val = 0.0;
+		for (int increment = 0; increment < r_levels; increment++){
 			r_vals.push_back(val);
+			val += r_increment;
 		}
 		if (r_vals.size() != r_levels){
 			return 88;
 		}
 	} else {
-		r_vals.push_back(-1);
+		double val = 0.0;
+		for (int increment = 0; increment < 100; increment++){
+			r_vals.push_back(val);
+			val += 0.01;
+		}
 	}
-
 
 	//For k-selection tournament
 	std::vector<int> tourn_arr;
@@ -262,9 +369,9 @@ int main(int argc, char* argv[]){
 	std::uniform_real_distribution<double> prob(0,1);
 	std::uniform_real_distribution<double> init_ann_dist(-std::abs(init_ann_range),std::abs(init_ann_range));
 	std::uniform_int_distribution<int> randN(0,N-1);
-	std::uniform_int_distribution<int> randQ(0,(q_levels-1));
-	std::uniform_int_distribution<int> randS(0,(s_levels-1));
-	std::uniform_int_distribution<int> randR(0,(r_levels-1));
+	std::uniform_int_distribution<int> randQ(0,(q_vals.size()-1));
+	std::uniform_int_distribution<int> randS(0,(s_vals.size()-1));
+	std::uniform_int_distribution<int> randR(0,(r_vals.size()-1));
 	auto ann_mu_S = std::bernoulli_distribution(std::abs(mut_rate_ann_S)); //distribution for ann mutation chance - sender
 	auto ann_mu_R = std::bernoulli_distribution(std::abs(mut_rate_ann_R)); //distribution for ann mutation chance - receivers
 
@@ -367,7 +474,6 @@ int main(int argc, char* argv[]){
 			//Signaller: s = q.
 			//Receivers payoff is difference between s and r
 
-
 			double maxDeviation = N;
 			//double targetDeviation = (1.0-targetAccuracy)*maxDeviation;
 			// target deviation for senders - what is the best that senders can do?
@@ -375,12 +481,12 @@ int main(int argc, char* argv[]){
 
 			double bestFitnessS = 0.0;
 			// iterate through all q and determine best sender move
-			for (int q = 0; q < q_levels; q++){
+			for (int q = 0; q < q_vals.size(); q++){
 				//Best sender fit for this level? Find s that minimizes distance between s and q
 				double minDist = 10.0;
 				double bestS = 10;
 
-				for (int s = 0; s < s_levels; s++){
+				for (int s = 0; s < s_vals.size(); s++){
 					double s_q_dist = std::abs(q_vals[q] - s_vals[s]);
 					if (s_q_dist < minDist){
 						bestS = s;
@@ -390,16 +496,16 @@ int main(int argc, char* argv[]){
 				bestFitnessS += (1.0 - minDist);
 			} //After the q for loop, bestFit holds the maximim possible fitness for a sender in the intialize routine
 
-			double targetFitnessS = (targetAccuracy)*(bestFitnessS/double(q_levels))*N;
+			double targetFitnessS = (targetAccuracy)*(bestFitnessS/double(q_vals.size()))*N;
 
 			double bestFitnessR = 0.0;
 			// iterate through all q and determine best sender move
-			for (int s = 0; s < s_levels; s++){
+			for (int s = 0; s < s_vals.size(); s++){
 				//Best receiver fit for this level? Find r that minimizes distance between r and s
 				double minDist = 10.0;
 				double bestR = 10;
 
-				for (int r = 0; r < r_levels; r++){
+				for (int r = 0; r < r_vals.size(); r++){
 					double r_s_dist = std::abs(s_vals[s] - r_vals[r]);
 					if (r_s_dist < minDist){
 						bestR = r;
@@ -408,7 +514,7 @@ int main(int argc, char* argv[]){
 				}
 				bestFitnessR += (1.0 - minDist);
 			} //After the q for loop, bestFit holds the maximim possible fitness for a sender in the intialize routine
-			double targetFitnessR = (targetAccuracy)*(bestFitnessR/double(s_levels))*N;
+			double targetFitnessR = (targetAccuracy)*(bestFitnessR/double(s_vals.size()))*N;
 
 			bool targetAcheived = false;
 
@@ -432,45 +538,55 @@ int main(int argc, char* argv[]){
 
 					//Try a random q. If s = q, reward.
 
+					//-------------------Turning s seleciton into a function
 
-					double s = 0;
-					bool s_selected = false;
-					for (int tries = 0; tries < tries_max; tries++){
-						//If s is continuous - produce a new vector of random s vals
-						//question - how many continuous values to try?
-						//Could be negative value in s_levels. If s_levels = -100, try 100?
-						//Or add a parameter for number of tries for each s q r. Keep default 10.
-						//Another option: allow s_levels to stay as it is. If continuous, just assign random vals each individual to all of s_vals
+					double s = select_s_Sender(S_cur, q_rand, s_levels, s_vals, tries_max, prob, rng);
 
-						//here
-						//Shuffle s_vals
-						std::shuffle(std::begin(s_vals), std::end(s_vals), rng);
-						//Try each value in vector s_vals. This is sampling without replacement.
-						for (int s_try = 0; s_try < s_levels; s_try++){
+					//-----------------------------------------------------------------
+					/* Old implementation before refactoring and continuous
+						double s = 0;
+						bool s_selected = false;
+						for (int tries = 0; tries < tries_max; tries++){
+							//If s is continuous - produce a new vector of random s vals
+							//question - how many continuous values to try?
+							//Could be negative value in s_levels. If s_levels = -100, try 100?
+							//Or add a parameter for number of tries for each s q r. Keep default 10.
+							//Another option: allow s_levels to stay as it is. If continuous, just assign random vals each individual to all of s_vals
 
-							if (prob(rng) < S_cur.annS_output(s_vals[s_try], q_rand)){
-								s = s_vals[s_try];
-								s_selected = true;
+							//here
+							//Shuffle s_vals
+							std::shuffle(std::begin(s_vals), std::end(s_vals), rng);
+							//Try each value in vector s_vals. This is sampling without replacement.
+							for (int s_try = 0; s_try < s_levels; s_try++){
+
+								if (prob(rng) < S_cur.annS_output(s_vals[s_try], q_rand)){
+									s = s_vals[s_try];
+									s_selected = true;
+									break;
+								}
+							}
+							if (s_selected == true){
 								break;
 							}
 						}
-						if (s_selected == true){
-							break;
-						}
-					}
+						std::cout << "  \tOld: " << s << std::endl;
+					 */
+					//-----------------------------------------------------------------
 
 					//s is now selected.
 					//Fitness = 1 - abs(q_rand - s)
-					double fitnessS = 1.0 - std::abs(q_rand - s); //Senders are just tryng to match s to q
+					double fitnessS = 1.0 - std::abs(q_rand - s); //Senders are just trying to match s to q
 					SenderPopulation[i].change_fitness(fitnessS);
 
 					//Receivers
 
 					Receiver R_cur = ReceiverPopulation[i];
+
 					double s_rand = s_vals[randS(rng)]; //random s
 
 					//Try a random s. Output r = s is best
 
+					/*
 					double r = 0;
 					bool r_selected = false;
 					for (int tries = 0; tries < tries_max; tries++){
@@ -489,11 +605,14 @@ int main(int argc, char* argv[]){
 							break;
 						}
 					}
+					*/
 
-					double fitnessR = receiver_benefit_function(r, s_rand);
+					double r = select_r_Receiver(R_cur, s_rand, r_levels, r_vals, tries_max, prob, rng);
+
+					double fitnessR = receiver_benefit_function(r, s_rand, 1.0);	//Not using curvature here..?
 					ReceiverPopulation[i].change_fitness(fitnessR);
 
-					std::cout << "q: " << q_rand << " s: " << s << " r: " << r << " senderFit: " << fitnessS << " receiverFit: " << fitnessR << "\n";
+//	std::cout << "q: " << q_rand << " s: " << s << " s_rand: " << s_rand << " r: " << r << " senderFit: " << fitnessS << " receiverFit: " << fitnessR << "\n";
 
 					//Total deviation for receivers and senders
 					totalFitnessR += fitnessR;
@@ -559,14 +678,13 @@ int main(int argc, char* argv[]){
 						}
 					}
 
-
 				}//end indvidual loop
 				//Check total deviation - break loop if it is low enough
 				//Max deviation = 1 * N * N
 				//Total deviation holds how 'wrong' the networks are. N*N = worst, 0 = best
 				//We want to acheive less than targetAccuracy % deviation.
 
-				//std::cout << "targetFitnessS: " << targetFitnessS << " targetFitnessR: " << targetFitnessR << "\t\tfitnessS: " << totalFitnessS << "\tfitnessR: " << totalFitnessR << "\n";
+std::cout << "targetFitnessS: " << targetFitnessS << "\ttargetFitnessR: " << targetFitnessR << "\tfitnessS: " << totalFitnessS << "\tfitnessR: " << totalFitnessR << "\n";
 
 				if (totalFitnessR >= targetFitnessR && totalFitnessS >= targetFitnessS){
 					genAcheived = trainingGen;
@@ -578,6 +696,7 @@ int main(int argc, char* argv[]){
 				ReceiverPopulation.swap(ReceiverOffspring);
 
 			}//end trainingGen loop
+
 		}
 
 		//Write initial ANNs to file - unless 0 reports are requested
@@ -665,15 +784,15 @@ int main(int argc, char* argv[]){
 					}
 
 					//Modify sender fitness
-					double senderCost = cost_function(s, q_cur, cMax, cMin);
-					double senderBenefit = sender_benefit_function(r);
+					double senderCost = cost_function(s, q_cur, p_s, p_q, cMax, cMin);
+					double senderBenefit = sender_benefit_function(r, p_rS);
 					double senderPayoff = senderBenefit - senderCost;
 					SenderPopulation[nullVecS[j]].change_fitness(senderPayoff);
 
 					// Modify receiver fitness
-					ReceiverPopulation[nullVecR[j]].change_fitness(receiver_benefit_function(r, q_cur));
+					ReceiverPopulation[nullVecR[j]].change_fitness(receiver_benefit_function(r, q_cur, p_rR));
 
-					//	std::cout << "s: " << s << "   q: " << q_cur << "   r: " << r << "   senderPayoff: " << senderPayoff << "   ReceiverPayoff" << receiver_benefit_function(r, q_cur) << "\n";
+					std::cout << "s: " << s << "   q: " << q_cur << "   r: " << r << "   senderPayoff: " << senderPayoff << "   ReceiverPayoff: " << receiver_benefit_function(r, q_cur, p_rR) << "\n";
 
 				}//End loop for this individual
 
@@ -853,16 +972,6 @@ int main(int argc, char* argv[]){
 
 
 		}//End Generation Loop
-
-		//For testing...
-		std::cout << "\n-----------------\n";
-		for (int i = 0; i < 5; i++){
-			for (int j = 0; j <=33; j++){
-				std::cout << ReceiverPopulation[i].get_ann(j) << " ";
-			}
-			std::cout << "\n";
-		}
-
 	}//End replicate loop
 
 	//	dataLog.close();
