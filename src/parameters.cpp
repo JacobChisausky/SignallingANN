@@ -16,6 +16,13 @@ void from_json(const nlohmann::json& j, parameters& t)
 	NLOHMANN_JSON_FROM(seed);
 	NLOHMANN_JSON_FROM(N);
 	NLOHMANN_JSON_FROM(G);
+	NLOHMANN_JSON_FROM(p_q);
+	NLOHMANN_JSON_FROM(p_s);
+	NLOHMANN_JSON_FROM(p_rS);
+	NLOHMANN_JSON_FROM(p_rR);
+	NLOHMANN_JSON_FROM(p_m);
+	NLOHMANN_JSON_FROM(try_0_first_S);
+	NLOHMANN_JSON_FROM(try_0_first_R);
 	NLOHMANN_JSON_FROM(mut_rate_ann_S);
 	NLOHMANN_JSON_FROM(mut_rate_ann_R);
 	NLOHMANN_JSON_FROM(mut_step_ann_S);

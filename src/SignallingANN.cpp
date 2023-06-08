@@ -25,36 +25,71 @@
 #include <string>
 #include "agents.h"
 
-//#include "parameters.h"
+#include "parameters.h"
 
+//continuous
+//See desmos plot at https://www.desmos.com/calculator/b125xbfhcd to make sense of this distribution
+double q_distribution_continuous(double m, double p_m, std::uniform_real_distribution<double> prob, std::default_random_engine& rng){
+	if (m == 0.5){
+		return prob(rng);
+	} else {
+	double q = -1.0;
+	while (1 == -1.0){
+		double q_try = prob(rng);
+		double q_prob = (1.0-m) + (std::pow(q_try,p_m)*(2.0*m - 1.0));
+		if (prob(rng) < q_prob){
+			q = q_try;
+		}
+	}
+	return q;
+	}
+}
 
-double select_s_Sender(Sender& agent, double q, int s_levels, std::vector<double> s_vals, int tries_max, std::uniform_real_distribution<double> prob, std::default_random_engine& rng) {
+double select_s_Sender(Sender& agent, double q, int s_levels, std::vector<double>& s_vals, int tries_max, bool try_0_first_S, std::uniform_real_distribution<double> prob, std::default_random_engine& rng) {
 
-	double s = 0;
+	double s = 0.0;
 
 	if (s_levels > 0){
-		for (int tries = 0; tries < tries_max; tries++){
+		bool skip = false;
+		if (try_0_first_S == true){
+			if (prob(rng) < agent.annS_output(0.0, q)){
+				skip = true;
+			}
+		}
 
-			//Shuffle s_vals
-			std::shuffle(std::begin(s_vals), std::end(s_vals), rng);
-			//Try each value in vector s_vals. This is sampling without replacement.
-			for (int s_try = 0; s_try < s_levels; s_try++){
+		if (skip == false){
+			for (int tries = 0; tries < tries_max; tries++){
 
-				if (prob(rng) < agent.annS_output(s_vals[s_try], q)){
-					s = s_vals[s_try];
-					break;
+				//Shuffle s_vals
+				std::shuffle(std::begin(s_vals), std::end(s_vals), rng);
+				//Try each value in vector s_vals. This is sampling without replacement.
+				for (int s_try = 0; s_try < s_levels; s_try++){
+
+					if (prob(rng) < agent.annS_output(s_vals[s_try], q)){
+						s = s_vals[s_try];
+						break;
+					}
 				}
 			}
 		}
 	} else { //Negative s_levels. This means continuous.
-		int tries_max_continuous = -1*s_levels;
-		for (int tries = 0; tries < tries_max_continuous; tries++){
+		bool skip = false;
+		if (try_0_first_S == true){
+			if (prob(rng) < agent.annS_output(0.0, q)){
+				skip = true;
+			}
+		}
 
-			//Try random values from flat continuous distribution
-			double s_try = prob(rng);
-			if (prob(rng) < agent.annS_output(s_try, q)){
-				s = s_try;
-				break;
+		if (skip == false){
+			int tries_max_continuous = (-1*s_levels) - int(try_0_first_S);
+			for (int tries = 0; tries < tries_max_continuous; tries++){
+
+				//Try random values from flat continuous distribution
+				double s_try = prob(rng);
+				if (prob(rng) < agent.annS_output(s_try, q)){
+					s = s_try;
+					break;
+				}
 			}
 		}
 	}
@@ -62,33 +97,51 @@ double select_s_Sender(Sender& agent, double q, int s_levels, std::vector<double
 }
 
 
-double select_r_Receiver(Receiver& agent, double s, int r_levels, std::vector<double> r_vals, int tries_max, std::uniform_real_distribution<double> prob, std::default_random_engine& rng) {
+double select_r_Receiver(Receiver& agent, double s, int r_levels, std::vector<double>& r_vals, int tries_max, bool try_0_first_R, std::uniform_real_distribution<double> prob, std::default_random_engine& rng) {
 
-	double r = 0;
+	double r = 0.0;
 
 	if (r_levels > 0){
-		for (int tries = 0; tries < tries_max; tries++){
+		bool skip = false;
+		if (try_0_first_R == true){
+			if (prob(rng) < agent.annR_output(0.0, s)){
+				skip = true;
+			}
+		}
 
-			//Shuffle s_vals
-			std::shuffle(std::begin(r_vals), std::end(r_vals), rng);
-			//Try each value in vector s_vals. This is sampling without replacement.
-			for (int r_try = 0; r_try < r_levels; r_try++){
+		if (skip == false){
+			for (int tries = 0; tries < tries_max; tries++){
 
-				if (prob(rng) < agent.annR_output(r_vals[r_try], s)){
-					r = r_vals[r_try];
-					break;
+				//Shuffle s_vals
+				std::shuffle(std::begin(r_vals), std::end(r_vals), rng);
+				//Try each value in vector r_vals. This is sampling without replacement.
+				for (int r_try = 0; r_try < r_levels; r_try++){
+
+					if (prob(rng) < agent.annR_output(r_vals[r_try], s)){
+						r = r_vals[r_try];
+						break;
+					}
 				}
 			}
 		}
 	} else { //Negative s_levels. This means continuous.
-		int tries_max_continuous = -1*r_levels;
-		for (int tries = 0; tries < tries_max_continuous; tries++){
+		bool skip = false;
+		if (try_0_first_R == true){
+			if (prob(rng) < agent.annR_output(0.0, s)){
+				skip = true;
+			}
+		}
 
-			//Try random values from flat continuous distribution
-			double r_try = prob(rng);
-			if (prob(rng) < agent.annR_output(r_try, s)){
-				r = r_try;
-				break;
+		if (skip == false){
+			int tries_max_continuous = (-1*r_levels) - int(try_0_first_R);
+			for (int tries = 0; tries < tries_max_continuous; tries++){
+
+				//Try random values from flat continuous distribution
+				double r_try = prob(rng);
+				if (prob(rng) < agent.annR_output(r_try, s)){
+					r = r_try;
+					break;
+				}
 			}
 		}
 	}
@@ -121,7 +174,7 @@ double receiver_benefit_function(double r, double q, double p_rR){
 	return benefit;
 }
 
-
+/*
 int main(){
 
 	int initOption = 1;
@@ -130,19 +183,20 @@ int main(){
 
 	int replicates = 1;
 
-	int s_levels = -200;		//Number of s values to use. If negative, continuous with that many attempts before 0 is chosen.
-	int q_levels = 5;		//Number of q values to use. If negative, continuous with that many attempts before 0 is chosen.
-	int r_levels = -200;		//Number of r values to use. If negative, continuous with that many attempts before 0 is chosen.
+	int s_levels = 2;		//Number of s values to use. If negative, continuous with that many attempts before 0 is chosen.
+	int q_levels = 2;		//Number of q values to use. If negative, continuous with that many attempts before 0 is chosen.
+	int r_levels = 2;		//Number of r values to use. If negative, continuous with that many attempts before 0 is chosen.
 
 	double cMax = 1.5;		//Cost of s = 1 to q = 0
 	double cMin = 0.1;		//Cost of s = 1 to q = 1
 
-	double p_q = 1.0;
-	double p_s = 1.0;
-	double p_rS = 1.0;
+	double p_q = 5.0;
+	double p_s = 0.4;
+	double p_rS = 2.0;
 	double p_rR = 1.0;
+	double p_m = 1.0;
 
-	double m = 0.25;		//Percent q=1 in pop
+	double m = 0.25;		//Percent q=1 in pop when s_levels = 2. Otherwise gives quality distribution following (1.0-m) + (std::pow(quality,p_m)*(2.0*m - 1.0))
 
 	//int seed = 12345628;
 	auto currentTime = std::chrono::system_clock::now();
@@ -159,6 +213,8 @@ int main(){
 	double mut_step_ann_R = 0.01;
 
 	int tries_max = 10;	//Max number of times to try all discrete s or r values. If all vals are tried this many times with no selection, value of 0 is used
+	bool try_0_first_S = false;
+	bool try_0_first_R = false;
 
 	int interactionPartners = 10;
 	int k = 2;
@@ -174,15 +230,19 @@ int main(){
 	bool nullReceivers = false;
 	bool nullSenders = false;
 
-	std::string dataFileName = "test";
+	std::string dataFileName = "real_data";
 	//	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/data";
 	std::string dataFileFolder = "C:/Users/owner/Documents/trash";
 
 
-	/*
+	*/
 //json version
 int main(int argc, char* argv[]){
 	// getting params from the parameter file via json
+
+
+	//TO DO - add parameter on how complex to make ANNs. 'Not flat on 0 or 1' might not be enough
+
 
 	std::cout << argv[1] << std::endl;
 
@@ -206,6 +266,10 @@ int main(int argc, char* argv[]){
 	double p_s = params.p_s;
 	double p_rS = params.p_rS;
 	double p_rR = params.p_rR;
+	double p_m = params.p_m;
+
+	bool try_0_first_S = params.try_0_first_S;
+	bool try_0_first_R = params.try_0_first_R;
 
 	double m = params.m;
 	int seed = params.seed;
@@ -228,12 +292,12 @@ int main(int argc, char* argv[]){
 	bool nullSenders = params.nullSenders;
 	std::string dataFileName = params.dataFileName;
 	std::string dataFileFolder = params.dataFileFolder;
-	 */
+
 
 	//_________End parameter input
 
-	//Get ANNs from .csv eventually for honest start?
 
+	//Get ANNs from .csv eventually for honest start?
 
 	//Reports
 	int ReportFreq_annVar = 0;
@@ -281,10 +345,9 @@ int main(int argc, char* argv[]){
 	//Prepare output files
 	annVars << "rep,gen,indType,indNum,quality,fitness,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38";
 	//		dataLog << "rep,gen,ind,indType,sendType,strategy,alphaBeta,fitness";
-	//paramFile << "replicates,s_levels,q_levels,cMax,cMin,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,dataFileName,dataFileFolder";
-	paramFile << "initOption,maxTrainingTime,targetAccuracy,replicates,s_levels,q_levels,r_levels,cMax,cMin,p_s,p_q,p_rS,p_rR,m,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,nullReceivers,nullSenders,tries_max,dataFileName ,dataFileFolder";
+	paramFile << "initOption,maxTrainingTime,targetAccuracy,replicates,s_levels,q_levels,r_levels,cMax,cMin,p_q,p_s,p_rS,p_rR,p_m,try_0_first_S,try_0_first_R,m,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,nullReceivers,nullSenders,tries_max,dataFileName ,dataFileFolder";
 	//paramFile << "\n"<< std::to_string(replicates) << "," << std::to_string(s_levels) << "," << std::to_string(q_levels) << "," << std::to_string(cMax)<<","<<std::to_string(cMin)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(k)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(complexInit)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<std::to_string(recordFittestANNs)<<","<<dataFileName<<","<<dataFileFolder;
-	paramFile << "\n" << std::to_string(initOption) <<  ","<< std::to_string(maxTrainingTime) <<  ","<< std::to_string(targetAccuracy) <<  ","<< std::to_string(replicates) <<  ","<< std::to_string(s_levels) <<  ","<< std::to_string(q_levels) <<  ","<< std::to_string(r_levels) <<  ","<< std::to_string(cMax) <<  ","<< std::to_string(cMin) << "," << std::to_string(p_s) << "," << std::to_string(p_q) << "," << std::to_string(p_rS) << "," << std::to_string(p_rR) << "," << std::to_string(m) <<  ","<< std::to_string(seed) <<  ","<< std::to_string(N) <<  ","<< std::to_string(G) <<  ","<< std::to_string(mut_rate_ann_S) <<  ","<< std::to_string(mut_rate_ann_R) <<  ","<< std::to_string(mut_step_ann_S) <<  ","<< std::to_string(mut_step_ann_R) <<  ","<< std::to_string(interactionPartners) <<  ","<< std::to_string(k) <<  ","<< std::to_string(init_ann_range) <<  ","<< std::to_string(complexInit) <<  ","<< std::to_string(Report_annVar) <<  ","<< std::to_string(Report_annVar_N) <<  ","<< std::to_string(Report_annInit) <<  ","<< std::to_string(recordFittestANNs) <<  ","<< std::to_string(nullReceivers)<<  ","<< std::to_string(nullSenders) << ","<< std::to_string(tries_max) <<  ","<<dataFileName<<  ","<<dataFileFolder;
+	paramFile << "\n" << std::to_string(initOption) <<  ","<< std::to_string(maxTrainingTime) <<  ","<< std::to_string(targetAccuracy) <<  ","<< std::to_string(replicates) <<  ","<< std::to_string(s_levels) <<  ","<< std::to_string(q_levels) <<  ","<< std::to_string(r_levels) <<  ","<< std::to_string(cMax) <<  ","<< std::to_string(cMin) << "," << std::to_string(p_q)<<","<<std::to_string(p_s)<<","<<std::to_string(p_rS)<<","<<std::to_string(p_rR)<<","<<std::to_string(p_m)<<","<<std::to_string(try_0_first_S)<<","<<std::to_string(try_0_first_R)<<","<<std::to_string(m) <<  ","<< std::to_string(seed) <<  ","<< std::to_string(N) <<  ","<< std::to_string(G) <<  ","<< std::to_string(mut_rate_ann_S) <<  ","<< std::to_string(mut_rate_ann_R) <<  ","<< std::to_string(mut_step_ann_S) <<  ","<< std::to_string(mut_step_ann_R)  <<  ","<< std::to_string(interactionPartners) <<  ","<< std::to_string(k) <<  ","<< std::to_string(init_ann_range) <<  ","<< std::to_string(complexInit) <<  ","<< std::to_string(Report_annVar) <<  ","<< std::to_string(Report_annVar_N) <<  ","<< std::to_string(Report_annInit) <<  ","<< std::to_string(recordFittestANNs) <<  ","<< std::to_string(nullReceivers)<<  ","<< std::to_string(nullSenders) << ","<< std::to_string(tries_max) << ","<<dataFileName<<  ","<<dataFileFolder;
 
 	//Determine what values of s and q are used
 	//These are evenly spaced from 0 to 1
@@ -385,13 +448,14 @@ int main(int argc, char* argv[]){
 
 	//This vector will hold probabilites of assignment of each index in q_levels
 	//Not real probabilites - they will be converted into such by the discrete dist
+
 	std::vector<double> q_probs;
 	for (int i = 0; i < q_levels; i++){
 		double prob = (1.0 - m) + ( q_vals[i] * (2.0*m-1.0));
 		q_probs.push_back(prob);
 	}
 
-	std::discrete_distribution<int> q_dist(q_probs.begin(), q_probs.end());
+	std::discrete_distribution<int> q_distribution_discrete(q_probs.begin(), q_probs.end());
 
 	//Vector used for drawing random numbers from 0 to N-1 without replacement
 	std::vector<int> nullVecS;
@@ -437,10 +501,16 @@ int main(int argc, char* argv[]){
 			}
 
 			//Quality distribution - discrete
-			double qualityInit = q_vals[q_dist(rng)];
+			if (q_levels > 0){
+				double qualityInit = q_vals[q_distribution_discrete(rng)];
+				SenderPopulation.push_back(Sender(sender_ann,qualityInit));		//Create sender agent  with that network
+				SenderOffspring.push_back(Sender(sender_ann,qualityInit));		//Offspring = parents in first generation.
+			} else {		//q_levels negative = continuous distribution
+				double qualityInit = q_distribution_continuous(m, p_m, prob, rng);
+				SenderPopulation.push_back(Sender(sender_ann,qualityInit));		//Create sender agent  with that network
+				SenderOffspring.push_back(Sender(sender_ann,qualityInit));		//Offspring = parents in first generation.
+			}
 
-			SenderPopulation.push_back(Sender(sender_ann,qualityInit));		//Create sender agent  with that network
-			SenderOffspring.push_back(Sender(sender_ann,qualityInit));		//Offspring = parents in first generation.
 		}
 
 		for (int i = 0; i < N; i++){	//receivers
@@ -465,8 +535,10 @@ int main(int argc, char* argv[]){
 
 		//Now SenderPopulation and ReceiverPopulation are populated with agents of random networks and fitness 0.
 
-		//Initialize option: Honest - take the ANNs and train them to prespecified behavior.
 
+
+
+		//Initialize option: Honest - take the ANNs and train them to prespecified behavior.
 		int genAcheived = maxTrainingTime;
 		if (initOption == 1){	//This is for s_levels = 2, q_levels = 2. This is a Zollman Honest Equilibrium
 			//What if we init at hybrid equilibrium - q = 0, prob sending =
@@ -494,7 +566,7 @@ int main(int argc, char* argv[]){
 					}
 				}
 				bestFitnessS += (1.0 - minDist);
-			} //After the q for loop, bestFit holds the maximim possible fitness for a sender in the intialize routine
+			} //After the q for loop, bestFit holds the maximum possible fitness for a sender in the initialize routine
 
 			double targetFitnessS = (targetAccuracy)*(bestFitnessS/double(q_vals.size()))*N;
 
@@ -532,15 +604,20 @@ int main(int argc, char* argv[]){
 
 					//Senders
 					Sender S_cur = SenderPopulation[i];
-					double q_rand = q_vals[randQ(rng)]; //random q
+					double  q_rand = -1.0;
 
+					if (q_levels > 0){
+						q_rand = q_vals[q_distribution_discrete(rng)];  //random q
+					} else { //q levels negative = continuous
+						q_rand = q_distribution_continuous(m, p_m, prob, rng);
+					}
 					//Training senders with random q. NOT q with probabilites determined by m.
 
 					//Try a random q. If s = q, reward.
 
 					//-------------------Turning s seleciton into a function
 
-					double s = select_s_Sender(S_cur, q_rand, s_levels, s_vals, tries_max, prob, rng);
+					double s = select_s_Sender(S_cur, q_rand, s_levels, s_vals, tries_max, false, prob, rng);
 
 					//-----------------------------------------------------------------
 					/* Old implementation before refactoring and continuous
@@ -582,7 +659,12 @@ int main(int argc, char* argv[]){
 
 					Receiver R_cur = ReceiverPopulation[i];
 
-					double s_rand = s_vals[randS(rng)]; //random s
+					double s_rand = -1.0;
+					if (s_levels > 0){
+						s_rand = s_vals[randS(rng)]; //random s
+					} else {
+						s_rand = prob(rng);
+					}
 
 					//Try a random s. Output r = s is best
 
@@ -605,16 +687,17 @@ int main(int argc, char* argv[]){
 							break;
 						}
 					}
-					*/
+					 */
 
-					double r = select_r_Receiver(R_cur, s_rand, r_levels, r_vals, tries_max, prob, rng);
+					double r = select_r_Receiver(R_cur, s_rand, r_levels, r_vals, tries_max, false, prob, rng);
 
-					double fitnessR = receiver_benefit_function(r, s_rand, 1.0);	//Not using curvature here..?
+					double fitnessR = receiver_benefit_function(r, s_rand, 1.0);	//Not using curvature here.
 					ReceiverPopulation[i].change_fitness(fitnessR);
 
-//	std::cout << "q: " << q_rand << " s: " << s << " s_rand: " << s_rand << " r: " << r << " senderFit: " << fitnessS << " receiverFit: " << fitnessR << "\n";
 
-					//Total deviation for receivers and senders
+					//	std::cout << "q_rand: " << q_rand << "\ts: " << s << "\ts_rand: " << s_rand << "\tr: " << r << "\tsenderFit: " << fitnessS << "\treceiverFit: " << fitnessR << "\n";
+
+					//Total fitness for receivers and senders
 					totalFitnessR += fitnessR;
 					totalFitnessS += fitnessS;
 
@@ -684,7 +767,7 @@ int main(int argc, char* argv[]){
 				//Total deviation holds how 'wrong' the networks are. N*N = worst, 0 = best
 				//We want to acheive less than targetAccuracy % deviation.
 
-std::cout << "targetFitnessS: " << targetFitnessS << "\ttargetFitnessR: " << targetFitnessR << "\tfitnessS: " << totalFitnessS << "\tfitnessR: " << totalFitnessR << "\n";
+				//std::cout << "targetFitnessS: " << targetFitnessS << "\ttargetFitnessR: " << targetFitnessR << "\tfitnessS: " << totalFitnessS << "\tfitnessR: " << totalFitnessR << "\n";
 
 				if (totalFitnessR >= targetFitnessR && totalFitnessS >= targetFitnessS){
 					genAcheived = trainingGen;
@@ -715,10 +798,17 @@ std::cout << "targetFitnessS: " << targetFitnessS << "\ttargetFitnessR: " << tar
 			}
 		}
 
+
+
 		//Reset qualities
 		for (int n = 0; n < N; n++){
-			double qual = q_vals[q_dist(rng)];
-			SenderPopulation[n].set_quality(qual);
+			if (q_levels > 0){
+				double qual = q_vals[q_distribution_discrete(rng)];
+				SenderPopulation[n].set_quality(qual);
+			} else {
+				double qual = q_distribution_continuous(m, p_m, prob, rng);
+				SenderPopulation[n].set_quality(qual);
+			}
 		}
 
 		//Start Generation Loop
@@ -744,44 +834,10 @@ std::cout << "targetFitnessS: " << targetFitnessS << "\ttargetFitnessR: " << tar
 
 
 					//Determine strength of signal sent by signaller
-
-					double s = 0;
-					bool s_selected = false;
-					for (int tries = 0; tries < tries_max; tries++){
-						//Shuffle s_vals
-						std::shuffle(std::begin(s_vals), std::end(s_vals), rng);
-						//Try each value in vector s_vals. This is sampling without replacement.
-						for (int s_try = 0; s_try < s_levels; s_try++){
-							if (prob(rng) < S_cur.annS_output(s_vals[s_try], q_cur)){
-								s = s_vals[s_try];
-								s_selected = true;
-								break;
-							}
-						}
-						if (s_selected == true){
-							break;
-						}
-					}
+					double s = select_s_Sender(S_cur, q_cur, s_levels, s_vals, tries_max, try_0_first_S, prob, rng);
 
 					//Receivers
-
-					double r = 0;
-					bool r_selected = false;
-					for (int tries = 0; tries < tries_max; tries++){
-						//Shuffle r_vals
-						std::shuffle(std::begin(r_vals), std::end(r_vals), rng);
-						//Try each value in vector s_vals. This is sampling without replacement.
-						for (int r_try = 0; r_try < r_levels; r_try++){
-							if (prob(rng) < R_cur.annR_output(s, r_vals[r_try])){
-								r = r_vals[r_try];
-								r_selected = true;
-								break;
-							}
-						}
-						if (r_selected == true){
-							break;
-						}
-					}
+					double r = select_r_Receiver(R_cur, s, r_levels, r_vals, tries_max, try_0_first_S, prob, rng);
 
 					//Modify sender fitness
 					double senderCost = cost_function(s, q_cur, p_s, p_q, cMax, cMin);
@@ -792,7 +848,7 @@ std::cout << "targetFitnessS: " << targetFitnessS << "\ttargetFitnessR: " << tar
 					// Modify receiver fitness
 					ReceiverPopulation[nullVecR[j]].change_fitness(receiver_benefit_function(r, q_cur, p_rR));
 
-					std::cout << "s: " << s << "   q: " << q_cur << "   r: " << r << "   senderPayoff: " << senderPayoff << "   ReceiverPayoff: " << receiver_benefit_function(r, q_cur, p_rR) << "\n";
+				//	std::cout << "s: " << s << "   q: " << q_cur << "   r: " << r << "   senderPayoff: " << senderPayoff << "   ReceiverPayoff: " << receiver_benefit_function(r, q_cur, p_rR) << "\n";
 
 				}//End loop for this individual
 
@@ -824,9 +880,15 @@ std::cout << "targetFitnessS: " << targetFitnessS << "\ttargetFitnessR: " << tar
 					SenderOffspring[n] = SenderPopulation[tourn_arr[maxFitInd]];
 					SenderOffspring[n].reset_fitness();
 
+
 					//Determine quality - discrete
-					double qual = q_vals[q_dist(rng)];
-					SenderOffspring[n].set_quality(qual);
+					if (q_levels > 0){
+						double qual = q_vals[q_distribution_discrete(rng)];
+						SenderOffspring[n].set_quality(qual);
+					} else {
+						double qual = q_distribution_continuous(m, p_m, prob, rng);
+						SenderOffspring[n].set_quality(qual);
+					}
 
 					//Mutation for SenderOffspring[n]
 					for (int m = 0; m <= 38; m++){

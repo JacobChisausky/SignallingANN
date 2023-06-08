@@ -15,11 +15,15 @@ pred<-function(x){
 }
 
 rowProduct <- function(row){
-  total <- row[1]
-  for (i in 2:length(row)){
-    total <- total*row[i]
+  if (length(row) == 1){
+    return(row)
+  } else {
+    total <- row[1]
+    for (i in 2:length(row)){
+      total <- total*row[i]
+    }
+    return(total)
   }
-  return(total)
 }
 
 rlu <- function(x) {
@@ -98,10 +102,10 @@ senderPhenotypeDiscrete <- function(s_levels, q_levels, ANN_S){
 generate_ANNs_random <- function(lim){
   return(runif(39, min=-abs(lim), max=abs(lim)))
 } #Returns sender ANN with random vars from -lim to lim
-generate_ANNs_randomComplex <- function(lim){
+generate_ANNs_randomComplex <- function(lim,complexity){
   a<-generate_ANNs_random(lim)
   phenotype <- senderPhenotype(10,10,a)
-  while (sum(unique(phenotype$output)) < 10){
+  while (sum(unique(phenotype$output)) < complexity){
     a<-generate_ANNs_random(1)
     phenotype <- senderPhenotype(10,10,a)
     #I could do this in cpp at initialization to make more interesting starting phenotypes?
@@ -208,13 +212,13 @@ receiverPhenotypeDiscrete <- function(s_levels, r_levels, ANN_R){
   return(phenotype_R)
 }
 
-generate_ANNr_random <- function(lim){
+generate_ANNr_random <- function(lim,complexity){
   return(runif(39, min=-abs(lim), max=abs(lim)))
 } #Returns ANN with random vars from -lim to lim
 generate_ANNr_randomComplex <- function(lim){
   a<-generate_ANNr_random(lim)
   phenotype <- receiverPhenotype(10,10,a)
-  while (sum(unique(phenotype$output)) < 10){
+  while (sum(unique(phenotype$output)) < complexity){
     a<-generate_ANNr_random(1)
     phenotype <- receiverPhenotype(10,10,a)
     #I could do this in cpp at initialization to make more interesting starting phenotypes?
@@ -267,42 +271,163 @@ receiverANN_printSurface <- function(resolution, ANN_R){
 } 
 
 #Functions for Prob Distributions ####
+calcProbsStochastic<-function(ann,tries_max,try_0_first,resolution,q_levels,s_levels){
+  #s_levels<-5
+  #q_levels<-5
+  #resolution<-500
+  #try_0_first<-FALSE
+  #tries_max <- 10
+  #ann<-generate_ANNs_randomComplex(1)
+  pheno<-senderPhenotypeDiscrete(s_levels,q_levels,ann)
+  
+  df<-data.frame()
+  for (q_cur in unique(pheno$q)){
+    data<-subset(pheno,q==q_cur)
+    for (i in 1:resolution){
+      s<-0
+      picked <- FALSE
+      if (try_0_first == TRUE){
+        if (runif(1) <= data[1,]$output){
+          s<-0
+          picked <- TRUE
+        }
+      }
+      if (picked == FALSE){
+        
+        randVec <- c()
+        for (num in unique(data$s)){
+          randVec <- c(randVec,num)
+        }
+        
+        data[v,]$output
+        if (try_0_first == TRUE){ #Try all vals except 0 now
+          vals<-sample(randVec)
+          for (v in unique(vals)){
+            if (v!=0){
+              if (runif(1) <= data[v+1,]$output){
+                s<-v
+                picked <- TRUE
+                break
+              }
+              
+            }
+          }
+        }
+        if (picked == FALSE){
+          for (try in 1:(tries_max - try_0_first)){
+            vals<-sample(randVec)
+            for (v in unique(vals)){
+              if (runif(1) <= data[v+1,]$output){
+                s<-v
+                picked <- TRUE
+                break
+              }
+            }
+          }
+        }
+      }
+      df<-rbind(df,c(q_cur,s))
+    }
+  }
+  colnames(df)<-c("q","s")
+  
+  dfSums <- data.frame()
+  for (q_cur in unique(df$q)){
+    for (s_cur in get_levels(s_levels)){
+      sum <- nrow(subset(df,q==q_cur & s==s_cur) )
+      dfSums<-rbind(dfSums,c(q_cur,s_cur,sum/resolution))
+    }
+  }
+  colnames(dfSums) <- c("q","s","freq")
+  return(dfSums)
+}
 
-calcProbs<-function(phenotype,tries_max){
+calcProbs<-function(phenotype,tries_max,try_0_first){
   receiver<-FALSE
   if (colnames(phenotype)[1]=="s"){
     receiver<-TRUE
     colnames(phenotype) <- c("q","s","output")
   }
-  
   dataAll<-data.frame()
   for (q_cur in unique(phenotype$q)){
     data<-subset(phenotype,q==q_cur)
-    data$probRaw <- data$output/sum(data$output)
-    if (sum(data$output)==0){data$probRaw<-0}
     
-    #Chance of selecting each by normal method (in first ten rounds)
-    data$probSelectionNormal <- (1-(1-data$output)^tries_max)
+    #### PERMUTATION METHOD ####
     
-    #chance neither selected by normal method = rowProduct(1-data$probSelectionNormal)
-    #ADD this to s=0
+    data$sumProb <- 0
+    data$roundProb <- 0
+    rows<-nrow(data)
     
-    #chance one is selected by normal method = 1-rowProduct(1-data$probSelectionNormal)
+    if (try_0_first == FALSE){
+      perms<-permutations(rows,rows)
+      
+    } else { #The only change is to make fewer permutations. Only assess those beginning with s=0
+      p<-permutations(rows-1,rows-1)+1 
+      perms <- cbind(1,p)
+    }
     
-    #chance each one is selected by normal method
-    #Calculated as chance either will be selected * chance each is selected vs the other per round
-    data$probNormalEach <- data$probRaw*(1-rowProduct(1-data$probSelectionNormal))
+    for (r in 1:nrow(perms)){
+      sendProbs<-data[perms[r,],]$output
+      passProbs <- c(1)
+      for (i in 1:(rows-1)){
+        p <- passProbs[length(passProbs)] * (1-data[perms[r,i],]$output)
+        passProbs<-c(passProbs,p)
+      }
+      total<-passProbs * sendProbs
+      #data$sumProb <- data$sumProb + total[perms[r,]]
+      for (j in 1:rows){
+        data[j,]$sumProb <- data[j,]$sumProb + total[perms[r,]==j]
+      }
+    }
+    data$roundProb <- data$sumProb / nrow(perms)  #probability of selection PER ROUND
+    roundSum<-sum(data$roundProb) #should only equal one if we have an output = 1. It is the total chance of sending a signal per round
     
-    #prob final is corrected for no event occuring
-    data$probFinal <- ifelse(data$s==0,rowProduct(1-data$probSelectionNormal) + data$probNormalEach,data$probNormalEach)
-    dataAll<-rbind(dataAll,data)
+    
+    #the above is just per round. But we try up to try_max rounds
+    #The chance of passing the first whole round (all vals tried) is
+    #chance not sending ANY signal per round
+    noSig<-1-sum(data$roundProb)
+    
+    #chance not sanding ANY signal in tries_max rounds
+    #noSig^tries_max
+    
+    #chance sending ANY signal in tries_max rounds
+    #1-(noSig^tries_max)
+    
+    #The sum of all our signals probs should equal the above number
+    #chance in round two = chance no signal in round 1 (noSig) * chance in round two (round prob)
+    #noSig*data$roundProb
+    #chance in round three = chance no signal in round 1 or round 2 (noSig*noSig) * chance in round twhree (round prob)
+    #(noSig^2)*data$roundProb
+    #chance in round four = chance no signal in round 1 or round 2or round 3 (noSig^2) * chance in round 4 (round prob)
+    #(noSig^3)*data$roundProb
+    #chance in round tries_max
+    #(noSig^(tries_max-1))*data$roundProb
+    
+    #these all need to be added
+    sum<-0
+    for (k in 1:(tries_max-1)){
+      sum<-sum + (noSig^k)*data$roundProb
+    }
+    data$triesMaxProb <- data$roundProb + sum
+    
+    #sending 0 'the hard way' is sending no other signals in 10 tries so defaulting to 0
+    #hard<-1-sum(data$triesMaxProb)
+    #hard  
+    data$prob <- data$triesMaxProb
+    data[1,]$prob <- data[1,]$triesMaxProb + (1-sum(data$triesMaxProb))
+    
+    #good!
+    dataAll <- rbind(dataAll,data)
+    
   }
-  
-  output<-dataAll[,-c(4:6)]
-  if (receiver==TRUE){
-    colnames(output) <- c("s","r","output","probFinal")
+  dataAll<-dataAll[,-which(colnames(dataAll)=="sumProb")]
+  dataAll<-dataAll[,-which(colnames(dataAll)=="roundProb")]
+  dataAll<-dataAll[,-which(colnames(dataAll)=="triesMaxProb")]
+  if(receiver==TRUE){
+    colnames(dataAll)<-c("s","r","output","prob")
   }
-  return(output)
+  return(dataAll)
 }
 
 
@@ -763,3 +888,424 @@ ggplot(subset(probsMaster,strength==1)) +
   facet_grid(mut_rate_ann+indType~mut_step_ann)
 
 
+#Exper 2: More mut rates ####
+#May have too low of mut rates or steps for this to work...
+directory_exper1 <- "C:/Users/owner/Documents/DONE/exper2_hybridEquilibAndMut"
+annFiles <- list.files(directory_exper1,"*annVars*")
+paramFiles <- list.files(directory_exper1,pattern = ".*_params_.*\\.csv$")
+
+annFile <- read.csv(paste0(directory_exper1,"/",annFiles[2]))
+paramsAll<-data.frame()
+for (i in paramFiles){
+  paramFile <- read.csv(paste0(directory_exper1,"/",i))
+  paramsAll<-rbind(paramsAll,paramFile)
+}
+paramsAll
+
+unique(annFile$gen)
+
+
+#for (G in unique(annFile$gen)){
+#for (num in 1:length(annFiles)){
+annFiles
+num<-1
+annFile <- read.csv(paste0(directory_exper1,"/",annFiles[num]))
+paramFile <- read.csv(paste0(directory_exper1,"/",paramFiles[num]))
+s_vals<-get_levels(paramFile$s_levels)
+q_vals<-get_levels(paramFile$q_levels)
+r_vals<-get_levels(paramFile$r_levels)
+
+
+sFile <- subset(annFile,indType == "Sender")
+
+unique(annFile$gen)
+G<-max(annFile$gen)
+
+sGen <- subset(sFile,gen==G)
+rGen <- subset(rFile,gen==G)
+
+#Put individuals together
+dataMult<-data.frame()
+for (n in 1:50){
+  n_annS<-as.numeric(sGen[n,7:45])
+  data<-senderPhenotypeDiscrete(2,2,n_annS)
+  data$n <- n  
+  dataMult<-rbind(dataMult,data)
+}
+p <- ggplot(dataMult) +
+  geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=4) + 
+  scale_color_viridis_c() +
+  theme_bw() +
+  facet_wrap(~n) +
+  labs(title=paste0("Senders: ",num)) +
+  labs(subtitle=paste0("gen = ",G,
+                       "\nk = ",paramFile$k,
+                       "\ncMin = ",paramFile$cMin,
+                       "\ncMax = ",paramFile$cMax
+  ))
+p
+
+paramFile
+
+
+ggsave(plot=p,paste0(num,"_",G/10000,"_S.png"),
+       device="png",path=directory_exper1,height=8,width=10,unit="in")
+
+
+if (1==2){
+  n<-1
+  n_annS<-as.numeric(sGen[n,7:45])
+  
+  #senderANN_printSurface(30,n_annS)
+  data<-senderPhenotype(70,70,n_annS)
+  ggplot(data) +
+    geom_point(aes(x=q,y=s,color=output),alpha=0.8,size=2.7) + 
+    scale_color_viridis_c() +
+    theme_bw()
+}
+
+
+#Receivers
+paramFile$cMax
+paramFile$cMin
+
+unique(annFile$gen)
+G<-2500
+
+rFile <- subset(annFile,indType == "Receiver")
+rGen <- subset(rFile,gen==G)
+rEnd <- subset(rFile,gen==max(rFile$gen))
+
+dataMult<-data.frame()
+for (n in 1:40){
+  n_annR<-as.numeric(rGen[n,7:45])
+  data<-receiverPhenotypeDiscrete(2,2,n_annR)
+  data$n <- n  
+  dataMult<-rbind(dataMult,data)
+}
+p <- ggplot(dataMult) +
+  geom_point(aes(x=s,y=r,color=output),alpha=0.8,size=4) + 
+  scale_color_viridis_c() +
+  theme_bw() +
+  facet_wrap(~n) +
+  labs(title=paste0("Receivers: ",num)) +
+  labs(subtitle=paste0("gen = ",G,
+                       "\nk = ",paramFile$k,
+                       "\ncMin = ",paramFile$cMin,
+                       "\ncMax = ",paramFile$cMax
+  ))
+p
+
+ggsave(plot=p,paste0(num,"_",G/10000,"_R.png"),
+       device="png",path=directory_exper1,height=8,width=10,unit="in")
+
+
+#### Discrete phenotypes - probabilities ####
+unique(sFile$gen)
+G<-100000
+sGen <- subset(sFile,gen==G)
+rGen <- subset(rFile,gen==G)
+
+probsAll<-data.frame()
+for (n in 1:nrow(sGen)){
+  n_annS<-as.numeric(sGen[n,7:45])
+  d<-senderPhenotypeDiscrete(2,2,n_annS) 
+  probs<-calcProbs(d,10)
+  colnames(probs)<-c("state","strength","output","probFinal")
+  probs$n <- n
+  probs$indType = "Sender"
+  probsAll<-rbind(probsAll,probs)
+}
+for (n in 1:nrow(rGen)){
+  n_annR<-as.numeric(rGen[n,7:45])
+  d<-receiverPhenotypeDiscrete(2,2,n_annR) 
+  probs<-calcProbs(d,10)
+  colnames(probs)<-c("state","strength","output","probFinal")
+  probs$n <- n
+  probs$indType = "Receiver"
+  probs
+  probsAll<-rbind(probsAll,probs)
+}
+
+# Plot for all levels = 2
+ggplot(subset(probsAll,strength==1)) + 
+  geom_jitter(aes(x=state,y=probFinal),height=0,width=0.05,alpha=.6) +
+  facet_grid(indType~.) +
+  theme_bw() +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    col = "black",
+    size = 3,
+    shape = 24,
+    fill = "red",
+    aes(x=state,y=probFinal) ) + 
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  #Expected beta
+  geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="blue") +
+  #Expected alpha
+  geom_point(aes(y=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),x=0,size=5,color="blue")
+
+#### Discrete phenotypes - collate files ####
+#for (G in unique(annFile$gen)){
+unique(annFile$gen)
+G<-100000
+probsMaster<-data.frame()
+for (num in 1:length(annFiles)){
+  annFile <- read.csv(paste0(directory_exper1,"/",annFiles[num]))
+  paramFile <- read.csv(paste0(directory_exper1,"/",paramFiles[num]))
+  s_vals<-get_levels(paramFile$s_levels)
+  q_vals<-get_levels(paramFile$q_levels)
+  r_vals<-get_levels(paramFile$r_levels)
+  sFile <- subset(annFile,indType == "Sender")
+  rFile <- subset(annFile,indType == "Receiver")
+  sGen <- subset(sFile,gen==G)
+  rGen <- subset(rFile,gen==G)
+  
+  probsAll<-data.frame()
+  for (n in 1:nrow(sGen)){
+    n_annS<-as.numeric(sGen[n,7:45])
+    d<-senderPhenotypeDiscrete(2,2,n_annS) 
+    probs<-calcProbs(d,10)
+    colnames(probs)<-c("state","strength","output","probFinal")
+    probs$n <- n
+    probs$indType = "Sender"
+    probsAll<-rbind(probsAll,probs)
+  }
+  for (n in 1:nrow(rGen)){
+    n_annR<-as.numeric(rGen[n,7:45])
+    d<-receiverPhenotypeDiscrete(2,2,n_annR) 
+    probs<-calcProbs(d,10)
+    colnames(probs)<-c("state","strength","output","probFinal")
+    probs$n <- n
+    probs$indType = "Receiver"
+    probs
+    probsAll<-rbind(probsAll,probs)
+  }
+  probsAll$num<-num
+  probsAll$mut_rate_ann <- paramFile$mut_rate_ann_S
+  probsAll$mut_step_ann <- paramFile$mut_step_ann_S
+  
+  probsMaster<-rbind(probsMaster,probsAll)
+}
+
+paramFile
+
+ggplot(subset(probsMaster,strength==1)) + 
+  geom_jitter(aes(x=state,y=probFinal),height=0,width=0.15,alpha=.05) +
+  theme_bw() +
+  #Expected beta
+  geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="#3473C7") +
+  #Expected alpha
+  geom_point(aes(y=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),x=0,size=5,color="#3473C7") +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    col = "black",
+    size = 3,
+    shape = 24,
+    fill = "#BD4848FC",
+    aes(x=state,y=probFinal) ) + 
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  facet_grid(mut_rate_ann+indType~mut_step_ann)
+
+
+#Exper 4 Discrete phenotypes - Prob calc ####
+directory_exper4 <- "C:/Users/owner/Documents/DONE/exper4"
+annFiles <- list.files(directory_exper4,"*annVars*")
+paramFiles <- list.files(directory_exper4,pattern = ".*_params_.*\\.csv$")
+
+G<-max(annFile$gen)
+sGen <- subset(sFile,gen==G)
+
+probsMaster<-data.frame()
+for (num in 1:length(annFiles)){
+  #  for (num in 1:1){
+  
+  #not set up for multiple reps in a file
+  annFile <- read.csv(paste0(directory_exper4,"/",annFiles[num]))
+  paramFile <- read.csv(paste0(directory_exper4,"/",paramFiles[num]))
+  s_vals<-get_levels(paramFile$s_levels)
+  q_vals<-get_levels(paramFile$q_levels)
+  r_vals<-get_levels(paramFile$r_levels)
+  sFile <- subset(annFile,indType == "Sender")
+  rFile <- subset(annFile,indType == "Receiver")
+  sGen <- subset(sFile,gen==G)
+  rGen <- subset(rFile,gen==G)
+  
+  paramFile$try_0_first_R
+  
+  probsAll<-data.frame()
+  for (n in 1:nrow(sGen)){
+    n_annS<-as.numeric(sGen[n,7:45])
+    d<-senderPhenotypeDiscrete(paramFile$s_levels,paramFile$q_levels,n_annS) 
+    probs<-calcProbs(d,paramFile$tries_max,paramFile$try_0_first_S)
+    colnames(probs)<-c("state","strength","output","prob")
+    probs$n <- n
+    probs$indType = "Sender"
+    probsAll<-rbind(probsAll,probs)
+  }
+  for (n in 1:nrow(rGen)){
+    n_annR<-as.numeric(rGen[n,7:45])
+    d<-receiverPhenotypeDiscrete(paramFile$s_levels,paramFile$q_levels,n_annR) 
+    probs<-calcProbs(d,paramFile$tries_max,paramFile$try_0_first_R)
+    colnames(probs)<-c("state","strength","output","prob")
+    probs$n <- n
+    probs$indType = "Receiver"
+    probsAll<-rbind(probsAll,probs)
+  }
+  probsAll$num<-num
+  probsAll$mut_rate_ann <- paramFile$mut_rate_ann_S
+  probsAll$mut_step_ann <- paramFile$mut_step_ann_S
+  
+  probsMaster<-rbind(probsMaster,probsAll)
+}
+probsMaster
+
+probsMasterBackup <- probsMaster
+probsMaster$u <- paste0(probsMaster$mut_rate_ann,"_",probsMaster$mut_step_ann)
+probsMaster$num2 <- as.numeric(probsMaster$num)
+for (uSelect in unique(probsMaster$u)){
+  data<-subset(probsMaster, u==uSelect)
+  numNew <- 1
+  for (numSelect in unique(data$num)){
+    #replace all instances of numSelect in probsMaster with numNew
+    probsMaster$num2 <- gsub(paste0("\\b",numSelect,"\\b"), as.numeric(numNew), probsMaster$num2)
+    numNew<-numNew + 1
+  }
+}
+unique(probsMaster$num2)
+probsMaster$num2 <- as.numeric(probsMaster$num2)
+probsMaster
+
+head(probsMaster)
+
+p<-ggplot(subset(probsMaster,strength==1 & num2 <= 5)) + 
+  #Expected beta - turn into line
+  #geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="#3473C7") +
+  geom_hline(aes(yintercept=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),size=0.7,color="#3473C7") +
+  #Expected alpha - turn into line
+  geom_hline(aes(yintercept=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),size=0.7,color="#3473C7") +
+  geom_jitter(aes(x=paste0(state,"_",num2),y=prob,color=as.factor(num2)),height=0,width=0.15,alpha=.5,size=0.5) +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    size = 1,
+    shape = 17,
+    fill = "#BD4848FC",
+    aes(x=paste0(state,"_",num2),y=prob) ) + 
+  theme_bw() +
+  geom_vline(xintercept=0.5) +
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  facet_grid(mut_rate_ann+indType~mut_step_ann)
+
+ggsave(plot=p,paste0("all_probsGood.png"),
+       device="png",path=directory_exper4,height=10,width=12,unit="in")
+
+
+
+# Exper 5 - Discrete phenotypes - Prob calc ####
+directory_exper5 <- "C:/Users/owner/Documents/DONE/exper4"
+annFiles <- list.files(directory_exper4,"*annVars*")
+paramFiles <- list.files(directory_exper4,pattern = ".*_params_.*\\.csv$")
+
+G<-max(annFile$gen)
+sGen <- subset(sFile,gen==G)
+
+probsMaster<-data.frame()
+for (num in 1:length(annFiles)){
+  #  for (num in 1:1){
+  
+  #not set up for multiple reps in a file
+  annFile <- read.csv(paste0(directory_exper4,"/",annFiles[num]))
+  paramFile <- read.csv(paste0(directory_exper4,"/",paramFiles[num]))
+  s_vals<-get_levels(paramFile$s_levels)
+  q_vals<-get_levels(paramFile$q_levels)
+  r_vals<-get_levels(paramFile$r_levels)
+  sFile <- subset(annFile,indType == "Sender")
+  rFile <- subset(annFile,indType == "Receiver")
+  sGen <- subset(sFile,gen==G)
+  rGen <- subset(rFile,gen==G)
+  
+  paramFile$try_0_first_R
+  
+  probsAll<-data.frame()
+  for (n in 1:nrow(sGen)){
+    n_annS<-as.numeric(sGen[n,7:45])
+    d<-senderPhenotypeDiscrete(paramFile$s_levels,paramFile$q_levels,n_annS) 
+    probs<-calcProbs(d,paramFile$tries_max,paramFile$try_0_first_S)
+    colnames(probs)<-c("state","strength","output","prob")
+    probs$n <- n
+    probs$indType = "Sender"
+    probsAll<-rbind(probsAll,probs)
+  }
+  for (n in 1:nrow(rGen)){
+    n_annR<-as.numeric(rGen[n,7:45])
+    d<-receiverPhenotypeDiscrete(paramFile$s_levels,paramFile$q_levels,n_annR) 
+    probs<-calcProbs(d,paramFile$tries_max,paramFile$try_0_first_R)
+    colnames(probs)<-c("state","strength","output","prob")
+    probs$n <- n
+    probs$indType = "Receiver"
+    probsAll<-rbind(probsAll,probs)
+  }
+  probsAll$num<-num
+  probsAll$mut_rate_ann <- paramFile$mut_rate_ann_S
+  probsAll$mut_step_ann <- paramFile$mut_step_ann_S
+  
+  probsMaster<-rbind(probsMaster,probsAll)
+}
+probsMaster
+
+probsMasterBackup <- probsMaster
+probsMaster$u <- paste0(probsMaster$mut_rate_ann,"_",probsMaster$mut_step_ann)
+probsMaster$num2 <- as.numeric(probsMaster$num)
+for (uSelect in unique(probsMaster$u)){
+  data<-subset(probsMaster, u==uSelect)
+  numNew <- 1
+  for (numSelect in unique(data$num)){
+    #replace all instances of numSelect in probsMaster with numNew
+    probsMaster$num2 <- gsub(paste0("\\b",numSelect,"\\b"), as.numeric(numNew), probsMaster$num2)
+    numNew<-numNew + 1
+  }
+}
+unique(probsMaster$num2)
+probsMaster$num2 <- as.numeric(probsMaster$num2)
+probsMaster
+
+head(probsMaster)
+
+p<-ggplot(subset(probsMaster,strength==1 & num2 <= 5)) + 
+  #Expected beta - turn into line
+  #geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="#3473C7") +
+  geom_hline(aes(yintercept=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),size=0.7,color="#3473C7") +
+  #Expected alpha - turn into line
+  geom_hline(aes(yintercept=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),size=0.7,color="#3473C7") +
+  geom_jitter(aes(x=paste0(state,"_",num2),y=prob,color=as.factor(num2)),height=0,width=0.15,alpha=.5,size=0.5) +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    size = 1,
+    shape = 17,
+    fill = "#BD4848FC",
+    aes(x=paste0(state,"_",num2),y=prob) ) + 
+  theme_bw() +
+  geom_vline(xintercept=0.5) +
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  facet_grid(mut_rate_ann+indType~mut_step_ann)
+
+ggsave(plot=p,paste0("all_probsGood.png"),
+       device="png",path=directory_exper4,height=10,width=12,unit="in")
+
+sum(sGen$quality==1)/(sum(sGen$quality==1)+sum(sGen$quality==0))

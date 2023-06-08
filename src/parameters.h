@@ -19,6 +19,13 @@ struct parameters
 	int	seed	=	12345678;
 	double	N	=	1000;
 	int	G	=	2500;
+	double p_q = 1.0;
+	double p_s = 1.0;
+	double p_rS = 1.0;
+	double p_rR = 1.0;
+	double p_m = 1.0;
+	bool try_0_first_S = true;
+	bool try_0_first_R = true;
 	double	mut_rate_ann_S	=	0.01;
 	double	mut_rate_ann_R	=	0.01;
 	double	mut_step_ann_S	=	0.01;
