@@ -34,7 +34,7 @@ double q_distribution_continuous(double m, double p_m, std::uniform_real_distrib
 		return prob(rng);
 	} else {
 	double q = -1.0;
-	while (1 == -1.0){
+	while (q == -1.0){
 		double q_try = prob(rng);
 		double q_prob = (1.0-m) + (std::pow(q_try,p_m)*(2.0*m - 1.0));
 		if (prob(rng) < q_prob){
