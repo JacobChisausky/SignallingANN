@@ -3,6 +3,7 @@
 // Author      : Jacob Chisausky
 // Description : Signalling ANN - Discrete
 //============================================================================
+//Did it update?
 
 //Some open questions:
 //How sensitive are (any) results to cost functions?
