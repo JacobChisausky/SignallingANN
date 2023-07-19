@@ -30,6 +30,7 @@ struct parameters
 	double	mut_rate_ann_R	=	0.01;
 	double	mut_step_ann_S	=	0.01;
 	double	mut_step_ann_R	=	0.01;
+	bool mut_step_normal = true;
 	int	tries_max	=	10;
 	int	interactionPartners	=	10;
 	int	k	=	2;

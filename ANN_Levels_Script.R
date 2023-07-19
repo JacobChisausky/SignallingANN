@@ -3,8 +3,8 @@
 
 #Exper 1 is looking at multiple s vales
 #Exper 2 is investigating what mut rates and steps promote hybrid equilibria
-
-
+# Libraries ####
+library(gtools)
 library(ggplot2)
 library(plotly)
 library(reshape2)
@@ -429,7 +429,6 @@ calcProbs<-function(phenotype,tries_max,try_0_first){
   }
   return(dataAll)
 }
-
 
 
 
@@ -1282,7 +1281,7 @@ probsMaster$num2 <- as.numeric(probsMaster$num2)
 probsMaster
 
 head(probsMaster)
-
+paramsAll$cMax
 p<-ggplot(subset(probsMaster,strength==1 & num2 <= 5)) + 
   #Expected beta - turn into line
   #geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="#3473C7") +
@@ -1309,3 +1308,625 @@ ggsave(plot=p,paste0("all_probsGood.png"),
        device="png",path=directory_exper4,height=10,width=12,unit="in")
 
 sum(sGen$quality==1)/(sum(sGen$quality==1)+sum(sGen$quality==0))
+
+# Exper 6 - Big array ####
+directory_exper6 <- "D:/StAndrews/ANN_Levels/exper6"
+annFiles <- list.files(directory_exper6,"*annVars*")
+paramFiles <- list.files(directory_exper6,pattern = ".*_params_.*\\.csv$")
+
+paramsAll<-data.frame()
+for (num in 1:length(paramFiles)){
+  paramFile <- read.csv(paste0(directory_exper6,"/",paramFiles[num]))
+  paramFile$num<-num
+  if (sum(colnames(paramFile)=="mut_step_normal")==0){
+    paramFile$mut_step_normal <- 0
+  }
+  paramsAll<-rbind(paramsAll,paramFile)
+}
+
+for (i in 1:ncol(paramsAll)){
+  if (length(unique(paramsAll[,i]))>1){
+    print(colnames(paramsAll)[i])
+  }
+}
+
+N_sample <- 100 #how many individuals to calculate probs for
+
+G<-unique(paramsAll$G)
+G<-300000
+calcMeansOnly<-TRUE
+
+probsMaster<-data.frame()
+meansMaster<-data.frame()
+
+for (num in 1:length(annFiles)){
+  
+  annFile <- read.csv(paste0(directory_exper6,"/",annFiles[num]))
+  paramFile <- read.csv(paste0(directory_exper6,"/",paramFiles[which(paste0(gsub("params.*","",paramFiles),gsub(".csv","",gsub(".*_","",paramFiles)))==paste0(gsub("annVars.*","",annFiles[num]),gsub(".csv","",gsub(".*_","",annFiles[num]))))]))
+  if (sum(colnames(paramFile)=="mut_step_normal")==0){
+    paramFile$mut_step_normal <- 0
+  }
+  paramFile
+  for (replc in unique(annFile$rep)){
+    annFileRep<-subset(annFile,rep==replc)
+    
+    print(paste0(num,"-",replc))
+    s_vals<-get_levels(2)
+    q_vals<-get_levels(2)
+    r_vals<-get_levels(2)
+    sFile <- subset(annFileRep,indType == "Sender")
+    rFile <- subset(annFileRep,indType == "Receiver")
+    G<- max(sFile$gen)
+    sGen <- subset(sFile,gen==G)
+    rGen <- subset(rFile,gen==G)
+    #paramFile$try_0_first_R
+    
+    probsAll<-data.frame()
+    for (n in 1:N_sample){#if we want to look at less than N individuals, change this
+      n_annS<-as.numeric(sGen[n,7:45])
+      d<-senderPhenotypeDiscrete(2,2,n_annS) 
+      probs<-calcProbs(d,10,0)
+      colnames(probs)<-c("state","strength","output","prob")
+      probs$n <- n
+      probs$indType = "Sender"
+      probsAll<-rbind(probsAll,probs)
+    }
+    for (n in 1:N_sample){
+      n_annR<-as.numeric(rGen[n,7:45])
+      d<-receiverPhenotypeDiscrete(2,2,n_annR) 
+      probs<-calcProbs(d,10,0)
+      colnames(probs)<-c("state","strength","output","prob")
+      probs$n <- n
+      probs$indType = "Receiver"
+      probsAll<-rbind(probsAll,probs)
+    }
+    probsAll
+    probsAll$num_rep<-paste0(num,"_",replc)
+    probsAll$num<-num
+    probsAll$rep<-replc
+    probsAll$G <- G
+    probsAll$N_sample <- N_sample
+    
+    #Target params here
+    probsAll$mut_step_normal <- paramFile$mut_step_normal
+    probsAll$k <- paramFile$k
+    probsAll$initOption <- paramFile$initOption
+    probsAll$cMax <- paramFile$cMax
+    probsAll$cMin <- paramFile$cMin
+    probsAll$mut_rate_ann <- paramFile$mut_rate_ann_S
+    probsAll$mut_step_ann <- paramFile$mut_step_ann_S
+    probsAll$N <- paramFile$N
+  
+  probsAll  
+    #*This is to turn master probs into just means
+    if (calcMeansOnly == TRUE){
+      meansAll<-data.frame()
+      probsAll$u <- paste0(probsAll$num_rep,"_",probsAll$state,"_",probsAll$strength,"_",probsAll$indType)
+      for (uCur in unique(probsAll$u)){
+        probsCur <- subset(probsAll, u==uCur)
+        means <- probsCur[1,-which(colnames(probsCur)=="n")]
+        means$output<-mean(probsCur$output)
+        meansAll<-rbind(meansAll,means)
+      }
+      meansMaster<-rbind(meansAll,meansMaster)  
+    } else {
+      probsMaster<-rbind(probsMaster,probsAll)
+    }
+  }
+}
+probsMaster
+
+# normal<-c()
+# for (num in 1:length(annFiles)){
+#   
+#   #not set up for multiple reps in a file
+#   annFile <- read.csv(paste0(directory_exper6,"/",annFiles[num]))
+#   paramFile <- read.csv(paste0(directory_exper6,"/",paramFiles[which(gsub(".csv","",gsub(".*_","",paramFiles))==gsub(".csv","",gsub(".*_","",annFiles[num])))]))
+#   
+#   for (replc in unique(annFile$rep)){
+#   for (i in 1:8){    
+#   normal<-c(normal,paramFile$mut_step_normal)
+#   }
+#   }
+# }
+
+write.csv(probsMaster,paste0(directory_exper6,"/probsMaster_N_100.csv"))
+
+write.csv(meansMaster,paste0(directory_exper6,"/meansMaster_N_100.csv"))
+
+meansMaster<-read.csv(paste0(directory_exper6,"/meansMaster_N_100.csv"))
+
+unique(meansMaster$cMax)
+unique(meansMaster$G)
+unique(meansMaster$N)
+
+
+data<-subset(meansMaster,strength==1 & cMax == 0.7 & G == 300000)
+
+p<-ggplot(data) + 
+  geom_point(aes(x=paste0(indType,"/",state), y=prob, color=paste0(indType,"/",state)),alpha=0.5) +
+  facet_grid(k+mut_step_ann~mut_step_normal+mut_rate_ann+initOption) +
+  labs(title=unique(meansMaster$cMax))  +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    size = 1.6,
+    alpha=0.9,
+    shape = 17,
+    fill = "black",
+    aes(x=paste0(indType,"/",state),y=prob) ) 
+ggsave(plot=p,paste0("means_hybrid_longG.png"),
+       device="png",path=directory_exper6,height=10,width=16,unit="in")
+
+#results from these
+#Cauchy dist is MUCH noisier than normal
+
+#exp beta (hybrid) = 0.7
+#exp alpha = .333
+.25/.75
+
+ggplot(subset(meansMaster,strength==1 & cMax == 1.5)) + 
+  geom_point(aes(x=paste0(mut_step_ann), y=prob, color=paste0()),alpha=0.5) +
+  facet_grid(state~indType+strength)
+
+unique(probsMaster$G)
+
+
+paramFile
+
+#G= 0  20000  40000  60000  80000 100000
+ggplot(subset(probsMaster,strength==1 & cMax==0.7 & G==100000)) + 
+  #Expected beta - turn into line
+  #geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="#3473C7") +
+  #geom_hline(aes(yintercept=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),size=0.7,color="#3473C7") +
+  #Expected alpha - turn into line
+  #geom_hline(aes(yintercept=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),size=0.7,color="#3473C7") +
+  geom_jitter(aes(x=paste0(state,"_",num),y=prob,color=as.factor(num)),height=0,width=0.15,alpha=.5,size=2) +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    alpha=0,
+    size = 4,
+    shape = 17,
+    fill = "#BD4848FC",
+    aes(x=paste0(state,"_",num),y=prob) ) +
+  theme_bw() +
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  facet_grid(k+indType~mut_rate_ann)
+
+probsMaster
+
+ggsave(plot=p,paste0("all_probsGood.png"),
+       device="png",path=directory_exper6,height=10,width=12,unit="in")
+
+sum(sGen$quality==1)/(sum(sGen$quality==1)+sum(sGen$quality==0))
+
+# Exper 7 - Big array larger K and muts ####
+directory_exper7 <- "D:/StAndrews/ANN_Levels/exper7_hybrid_mutsHigher_largeK"
+annFiles <- list.files(directory_exper7,"*annVars*")
+paramFiles <- list.files(directory_exper7,pattern = ".*_params_.*\\.csv$")
+
+paramsAll<-data.frame()
+for (num in 1:length(paramFiles)){
+  paramFile <- read.csv(paste0(directory_exper7,"/",paramFiles[num]))
+  paramFile$num<-num
+  if (sum(colnames(paramFile)=="mut_step_normal")==0){
+    paramFile$mut_step_normal <- 0
+  }
+  paramsAll<-rbind(paramsAll,paramFile)
+}
+
+for (i in 1:ncol(paramsAll)){
+  if (length(unique(paramsAll[,i]))>1){
+    print(colnames(paramsAll)[i])
+  }
+}
+
+paramsAll
+#Variables: N, K, mut rate ann, mut step ann
+
+N_sample <- 100 #how many individuals to calculate probs for
+
+G<-unique(paramsAll$G)
+G
+calcMeansOnly<-TRUE
+
+probsMaster<-data.frame()
+meansMaster<-data.frame()
+
+for (num in 1:length(annFiles)){
+  
+  annFile <- read.csv(paste0(directory_exper7,"/",annFiles[num]))
+  annFile$indType
+  paramFile <- read.csv(paste0(directory_exper7,"/",paramFiles[which(paste0(gsub("params.*","",paramFiles),gsub(".csv","",gsub(".*_","",paramFiles)))==paste0(gsub("annVars.*","",annFiles[num]),gsub(".csv","",gsub(".*_","",annFiles[num]))))]))
+  
+  if (sum(colnames(paramFile)=="mut_step_normal")==0){
+    paramFile$mut_step_normal <- 0
+  }
+  
+  paramFile
+  for (replc in unique(annFile$rep)){
+    annFileRep<-subset(annFile,rep==replc)
+   skip<-FALSE
+     print(paste0(num,"-",replc))
+    s_vals<-get_levels(2)
+    q_vals<-get_levels(2)
+    r_vals<-get_levels(2)
+    sFile <- subset(annFileRep,indType == "Sender")
+    rFile <- subset(annFileRep,indType == "Receiver")
+    if (nrow(sFile) != paramFile$Report_annVar_N){
+      skip <- TRUE
+    }
+    if (nrow(rFile) != paramFile$Report_annVar_N){
+      skip <- TRUE
+    }
+    if (skip==FALSE){
+    G<- max(sFile$gen)
+    sGen <- subset(sFile,gen==G)
+    rGen <- subset(rFile,gen==G)
+    #paramFile$try_0_first_R
+    
+    probsAll<-data.frame()
+    for (n in 1:N_sample){#if we want to look at less than N individuals, change this
+      n_annS<-as.numeric(sGen[n,7:45])
+      d<-senderPhenotypeDiscrete(2,2,n_annS) 
+      probs<-calcProbs(d,10,0)
+      colnames(probs)<-c("state","strength","output","prob")
+      probs$n <- n
+      probs$indType = "Sender"
+      probsAll<-rbind(probsAll,probs)
+    }
+    for (n in 1:N_sample){
+      n_annR<-as.numeric(rGen[n,7:45])
+      d<-receiverPhenotypeDiscrete(2,2,n_annR) 
+      probs<-calcProbs(d,10,0)
+      colnames(probs)<-c("state","strength","output","prob")
+      probs$n <- n
+      probs$indType = "Receiver"
+      probsAll<-rbind(probsAll,probs)
+    }
+    probsAll
+    probsAll$num_rep<-paste0(num,"_",replc)
+    probsAll$num<-num
+    probsAll$rep<-replc
+    probsAll$G <- G
+    probsAll$N_sample <- N_sample
+    
+    #Target params here
+    probsAll$mut_step_normal <- paramFile$mut_step_normal
+    probsAll$k <- paramFile$k
+    probsAll$initOption <- paramFile$initOption
+    probsAll$cMax <- paramFile$cMax
+    probsAll$cMin <- paramFile$cMin
+    probsAll$mut_rate_ann <- paramFile$mut_rate_ann_S
+    probsAll$mut_step_ann <- paramFile$mut_step_ann_S
+    probsAll$N <- paramFile$N
+    
+    probsAll  
+    #*This is to turn master probs into just means
+    if (calcMeansOnly == TRUE){
+      meansAll<-data.frame()
+      probsAll$u <- paste0(probsAll$num_rep,"_",probsAll$state,"_",probsAll$strength,"_",probsAll$indType)
+      for (uCur in unique(probsAll$u)){
+        probsCur <- subset(probsAll, u==uCur)
+        means <- probsCur[1,-which(colnames(probsCur)=="n")]
+        means$output<-mean(probsCur$output)
+        meansAll<-rbind(meansAll,means)
+      }
+      meansMaster<-rbind(meansAll,meansMaster)  
+    } else {
+      probsMaster<-rbind(probsMaster,probsAll)
+    }
+    }
+  }
+}
+meansMaster
+
+# normal<-c()
+# for (num in 1:length(annFiles)){
+#   
+#   #not set up for multiple reps in a file
+#   annFile <- read.csv(paste0(directory_exper7,"/",annFiles[num]))
+#   paramFile <- read.csv(paste0(directory_exper7,"/",paramFiles[which(gsub(".csv","",gsub(".*_","",paramFiles))==gsub(".csv","",gsub(".*_","",annFiles[num])))]))
+#   
+#   for (replc in unique(annFile$rep)){
+#   for (i in 1:8){    
+#   normal<-c(normal,paramFile$mut_step_normal)
+#   }
+#   }
+# }
+
+write.csv(probsMaster,paste0(directory_exper7,"/probsMaster_N_100.csv"))
+
+write.csv(meansMaster,paste0(directory_exper7,"/meansMaster_N_100.csv"))
+
+meansMaster<-read.csv(paste0(directory_exper7,"/meansMaster_N_100.csv"))
+
+unique(meansMaster$cMax)
+unique(meansMaster$G)
+unique(meansMaster$N)
+
+unique(meansMaster$cMax)
+data<-subset(meansMaster,strength==0)
+
+p<-ggplot(data) + 
+  geom_point(aes(x=paste0(indType,"/",state), y=prob, color=paste0(indType,"/",state)),alpha=0.5) +
+  facet_grid(k+mut_step_ann~mut_rate_ann+initOption) +
+  labs(title=unique(meansMaster$cMax))  +
+  theme_bw() +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    size = 1.6,
+    alpha=0.9,
+    shape = 17,
+    fill = "black",
+    aes(x=paste0(indType,"/",state),y=prob) ) 
+p
+ggsave(plot=p,paste0("means_hybrid_longG.png"),
+       device="png",path=directory_exper7,height=10,width=16,unit="in")
+
+#results from these
+#Cauchy dist is MUCH noisier than normal
+
+#exp beta (hybrid) = 0.7
+#exp alpha = .333
+.25/.75
+
+ggplot(subset(meansMaster,strength==1 & cMax == 1.5)) + 
+  geom_point(aes(x=paste0(mut_step_ann), y=prob, color=paste0()),alpha=0.5) +
+  facet_grid(state~indType+strength)
+
+unique(probsMaster$G)
+
+
+paramFile
+
+#G= 0  20000  40000  60000  80000 100000
+ggplot(subset(probsMaster,strength==1 & cMax==0.7 & G==100000)) + 
+  #Expected beta - turn into line
+  #geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="#3473C7") +
+  #geom_hline(aes(yintercept=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),size=0.7,color="#3473C7") +
+  #Expected alpha - turn into line
+  #geom_hline(aes(yintercept=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),size=0.7,color="#3473C7") +
+  geom_jitter(aes(x=paste0(state,"_",num),y=prob,color=as.factor(num)),height=0,width=0.15,alpha=.5,size=2) +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    alpha=0,
+    size = 4,
+    shape = 17,
+    fill = "#BD4848FC",
+    aes(x=paste0(state,"_",num),y=prob) ) +
+  theme_bw() +
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  facet_grid(k+indType~mut_rate_ann)
+
+probsMaster
+
+ggsave(plot=p,paste0("all_probsGood.png"),
+       device="png",path=directory_exper7,height=10,width=12,unit="in")
+
+sum(sGen$quality==1)/(sum(sGen$quality==1)+sum(sGen$quality==0))
+
+# Exper8 - three levels ####
+directory_exper8 <- "D:/StAndrews/ANN_Levels/exper8_3_levels"
+annFiles <- list.files(directory_exper8,"*annVars*")
+paramFiles <- list.files(directory_exper8,pattern = ".*_params_.*\\.csv$")
+
+paramsAll<-data.frame()
+for (num in 1:length(paramFiles)){
+  paramFile <- read.csv(paste0(directory_exper8,"/",paramFiles[num]))
+  paramFile$num<-num
+  if (sum(colnames(paramFile)=="mut_step_normal")==0){
+    paramFile$mut_step_normal <- 0
+  }
+  paramsAll<-rbind(paramsAll,paramFile)
+}
+
+for (i in 1:ncol(paramsAll)){
+  if (length(unique(paramsAll[,i]))>1){
+    print(colnames(paramsAll)[i])
+  }
+}
+
+paramsAll
+#Variables: N, K, mut rate ann, mut step ann
+
+N_sample <- 100 #how many individuals to calculate probs for
+
+G<-unique(paramsAll$G)
+G
+calcMeansOnly<-TRUE
+
+probsMaster<-data.frame()
+meansMaster<-data.frame()
+
+for (num in 1:length(annFiles)){
+  
+  annFile <- read.csv(paste0(directory_exper8,"/",annFiles[num]))
+  annFile$indType
+  paramFile <- read.csv(paste0(directory_exper8,"/",paramFiles[which(paste0(gsub("params.*","",paramFiles),gsub(".csv","",gsub(".*_","",paramFiles)))==paste0(gsub("annVars.*","",annFiles[num]),gsub(".csv","",gsub(".*_","",annFiles[num]))))]))
+  
+  if (sum(colnames(paramFile)=="mut_step_normal")==0){
+    paramFile$mut_step_normal <- 0
+  }
+  
+  paramFile
+  for (replc in unique(annFile$rep)){
+    annFileRep<-subset(annFile,rep==replc)
+    skip<-FALSE
+    print(paste0(num,"-",replc))
+    s_vals<-get_levels(paramFile$s_levels)
+    q_vals<-get_levels(paramFile$q_levels)
+    r_vals<-get_levels(paramFile$r_levels)
+    sFile <- subset(annFileRep,indType == "Sender")
+    rFile <- subset(annFileRep,indType == "Receiver")
+    if (nrow(sFile) != paramFile$Report_annVar_N){
+      skip <- TRUE
+    }
+    if (nrow(rFile) != paramFile$Report_annVar_N){
+      skip <- TRUE
+    }
+    if (skip==FALSE){
+      G<- max(sFile$gen)
+      sGen <- subset(sFile,gen==G)
+      rGen <- subset(rFile,gen==G)
+      #paramFile$try_0_first_R
+      
+      probsAll<-data.frame()
+      for (n in 1:N_sample){#if we want to look at less than N individuals, change this
+        n_annS<-as.numeric(sGen[n,7:45])
+        d<-senderPhenotypeDiscrete(paramFile$s_levels,paramFile$q_levels,n_annS) 
+        probs<-calcProbs(d,10,0)
+        colnames(probs)<-c("state","strength","output","prob")
+        probs$n <- n
+        probs$indType = "Sender"
+        probsAll<-rbind(probsAll,probs)
+      }
+      for (n in 1:N_sample){
+        n_annR<-as.numeric(rGen[n,7:45])
+        d<-receiverPhenotypeDiscrete(paramFile$s_levels,paramFile$r_levels,n_annR) 
+        probs<-calcProbs(d,10,0)
+        colnames(probs)<-c("state","strength","output","prob")
+        probs$n <- n
+        probs$indType = "Receiver"
+        probsAll<-rbind(probsAll,probs)
+      }
+      probsAll
+      probsAll$num_rep<-paste0(num,"_",replc)
+      probsAll$num<-num
+      probsAll$rep<-replc
+      probsAll$G <- G
+      probsAll$N_sample <- N_sample
+      
+      #Target params here
+      probsAll$mut_step_normal <- paramFile$mut_step_normal
+      probsAll$k <- paramFile$k
+      probsAll$m <- paramFile$m
+      probsAll$initOption <- paramFile$initOption
+      probsAll$cMax <- paramFile$cMax
+      probsAll$cMin <- paramFile$cMin
+      probsAll$mut_rate_ann <- paramFile$mut_rate_ann_S
+      probsAll$mut_step_ann <- paramFile$mut_step_ann_S
+      probsAll$N <- paramFile$N
+      
+      probsAll  
+      #*This is to turn master probs into just means
+      if (calcMeansOnly == TRUE){
+        meansAll<-data.frame()
+        probsAll$u <- paste0(probsAll$num_rep,"_",probsAll$state,"_",probsAll$strength,"_",probsAll$indType)
+        for (uCur in unique(probsAll$u)){
+          probsCur <- subset(probsAll, u==uCur)
+          means <- probsCur[1,-which(colnames(probsCur)=="n")]
+          means$output<-mean(probsCur$output)
+          meansAll<-rbind(meansAll,means)
+        }
+        meansMaster<-rbind(meansAll,meansMaster)  
+      } else {
+        probsMaster<-rbind(probsMaster,probsAll)
+      }
+    }
+  }
+}
+meansMaster
+paramsAll
+# normal<-c()
+# for (num in 1:length(annFiles)){
+#   
+#   #not set up for multiple reps in a file
+#   annFile <- read.csv(paste0(directory_exper8,"/",annFiles[num]))
+#   paramFile <- read.csv(paste0(directory_exper8,"/",paramFiles[which(gsub(".csv","",gsub(".*_","",paramFiles))==gsub(".csv","",gsub(".*_","",annFiles[num])))]))
+#   
+#   for (replc in unique(annFile$rep)){
+#   for (i in 1:8){    
+#   normal<-c(normal,paramFile$mut_step_normal)
+#   }
+#   }
+# }
+
+write.csv(probsMaster,paste0(directory_exper8,"/probsMaster_N_100.csv"))
+
+write.csv(meansMaster,paste0(directory_exper8,"/meansMaster_N_100.csv"))
+
+
+meansMaster<-read.csv(paste0(directory_exper8,"/meansMaster_N_100.csv"))
+#Need to redo with m...
+meansMaster
+unique(meansMaster$m)
+unique(meansMaster$G)
+unique(meansMaster$N)
+
+unique(meansMaster$mut_step_normal)
+
+data<-subset(meansMaster)
+data
+p<-ggplot(data) + 
+  geom_point(aes(x=paste0(indType,"/",state,"/",strength), y=prob, color=paste0(indType,"/",state,"/",strength)),alpha=0.5) +
+  facet_grid(k+mut_step_ann~mut_rate_ann+initOption+m) +
+  labs(title=unique(meansMaster$cMax))  +
+  theme_bw() +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    size = 1.6,
+    alpha=0.9,
+    shape = 17,
+    fill = "black",
+    aes(x=paste0(indType,"/",state,"/",strength),y=prob) ) 
+p
+ggsave(plot=p,paste0("means_hybrid_longG.png"),
+       device="png",path=directory_exper8,height=10,width=16,unit="in")
+
+#results from these
+#Cauchy dist is MUCH noisier than normal
+
+#exp beta (hybrid) = 0.7
+#exp alpha = .333
+.25/.75
+
+ggplot(subset(meansMaster,strength==1 & cMax == 1.5)) + 
+  geom_point(aes(x=paste0(mut_step_ann), y=prob, color=paste0()),alpha=0.5) +
+  facet_grid(state~indType+strength)
+
+unique(probsMaster$G)
+
+
+paramFile
+
+#G= 0  20000  40000  60000  80000 100000
+ggplot(subset(probsMaster,strength==1 & cMax==0.7 & G==100000)) + 
+  #Expected beta - turn into line
+  #geom_point(aes(y=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),x=1,size=5,color="#3473C7") +
+  #geom_hline(aes(yintercept=ifelse(indType=="Receiver",ifelse(paramFile$cMax<1,paramFile$cMax,1),-5)),size=0.7,color="#3473C7") +
+  #Expected alpha - turn into line
+  #geom_hline(aes(yintercept=ifelse(indType=="Sender",ifelse(paramFile$cMax<1,(paramFile$m/(1-paramFile$m)),0),-5)),size=0.7,color="#3473C7") +
+  geom_jitter(aes(x=paste0(state,"_",num),y=prob,color=as.factor(num)),height=0,width=0.15,alpha=.5,size=2) +
+  stat_summary(
+    fun = "mean",
+    geom = "point",
+    alpha=0,
+    size = 4,
+    shape = 17,
+    fill = "#BD4848FC",
+    aes(x=paste0(state,"_",num),y=prob) ) +
+  theme_bw() +
+  labs(subtitle="Received signal strength (receivers)\nQuality (senders)") +
+  labs(y="Probability") +
+  labs(x="Quality (senders) or \nReceived Signal Strength (receivers)") +
+  ylim(0,1) +
+  facet_grid(k+indType~mut_rate_ann)
+
+probsMaster
+
+ggsave(plot=p,paste0("all_probsGood.png"),
+       device="png",path=directory_exper8,height=10,width=12,unit="in")
+
+sum(sGen$quality==1)/(sum(sGen$quality==1)+sum(sGen$quality==0))
+

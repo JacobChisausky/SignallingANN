@@ -2,12 +2,12 @@ library("lubridate")
 
 sh_BinaryName      <- "Program"  #compiled program name
 
-hpc_time <- "0-24:00:00"
+hpc_time <- "0-48:00:00"
 hpc_mem <- 8000
 
 #auto_time <- TRUE #If true, ignore hpc_time and automatically calculate expected time
 
-jobFolder <- "exper3_multiple_r"  #The folder path when you want the JOBS to be written to. To be created in this directiory
+jobFolder <- "exper6_cMax_muts_k_init"  #The folder path when you want the JOBS to be written to. To be created in this directiory
 
 programPath <- "~/../../scratch/s5429412/ANN_Levels/src/Program"  #Where is the compiled program located? Include program name
 
@@ -15,42 +15,43 @@ parallelReplicates <- 5   #This is different from 'replicates' below. In the bel
 #In contrast, this will make replicates to be run in parallel. So, it will copy the entire job (including the number of replicates as given below)
 # and write them each to a different job
 
-initOption <- c(1)
+initOption <- c(0,1)
 maxTrainingTime <- c(100000)
-targetAccuracy <- c(0.98)
+targetAccuracy <- c(0.9)
 replicates <- c(1)
 s_levels <- c(2)
 q_levels <- c(2)
-r_levels <- c(2,50)
-cMax <- c(0.5,0.75,1.5)
-cMin <- c(0.0,0.25)
+r_levels <- c(2)
+cMax <- c(1.5,0.7)
+cMin <- c(0.1)
 p_q <- c(1.0)
 p_s <- c(1.0)
 p_rS <- c(1.0)
 p_rR <- c(1.0)
 p_m <- c(1.0)
-try_0_first_S <- c("true")
-try_0_first_R <- c("true")
+try_0_first_S <- c("false") #Only matters for continuous s or r
+try_0_first_R <- c("false")
 m <- c(0.25)
 seed <- c(0)
 N <- c(1000)
-G <- c(100000)
-mut_rate_ann_S <- c(0.01)
-mut_rate_ann_R <- c(0.01)
-mut_step_ann_S <- c(0.1)
-mut_step_ann_R <- c(0.1)
-tries_max <- c(10)
+G <- c(30000)
+mut_rate_ann_S <- c(0.001,0.005,0.01)
+mut_rate_ann_R <- c(0.1)
+mut_step_ann_S <- c(0.001,0.005,0.01)
+mut_step_ann_R <- c(0.005)
+mut_step_normal <- c("true")
+tries_max <- c(10)               
 interactionPartners <- c(10)
-k <- c(2)
+k <- c(2,3,5)
 init_ann_range <- c(1)
 complexInit <- c("true")
-Report_annVar <- c(10)
+Report_annVar <- c(1)
 Report_annVar_N <- c(N)
 Report_annInit <- c("true")
 recordFittestANNs <- c("false")
 nullReceivers <- c("false")
 nullSenders <- c("false")
-dataFileName<- "firstTests"
+dataFileName<- "ann_levels"
 dataFileFolder<- "."
 
 sameMutRates <- TRUE  #If true, mut_rate_ann_R will be overrided and replaced by mut_rate_ann_S 
@@ -128,6 +129,7 @@ params<-list(initOption,
              mut_rate_ann_R,
              mut_step_ann_S,
              mut_step_ann_R,
+             mut_step_normal,
              tries_max,
              interactionPartners,
              k,
@@ -166,6 +168,7 @@ paramsNames <- c("initOption",
                  "mut_rate_ann_R",
                  "mut_step_ann_S",
                  "mut_step_ann_R",
+                 "mut_step_normal",
                  "tries_max",
                  "interactionPartners",
                  "k",
@@ -215,49 +218,51 @@ for (pR in 1:parallelReplicates){
                                                   mut_step_ann_R <- x16
                                                 }
                                                 for (x17 in mut_step_ann_R){
-                                                  for (x18 in tries_max){
-                                                    for (x19 in interactionPartners){
-                                                      for (x20 in k){
-                                                        for (x21 in init_ann_range){
-                                                          for (x22 in complexInit){
-                                                            for (x23 in Report_annVar){
-                                                              for (x24 in Report_annVar_N){
-                                                                for (x25 in Report_annInit){
-                                                                  for (x26 in recordFittestANNs){
-                                                                    for (x27 in nullReceivers){
-                                                                      for (x28 in nullSenders){
-                                                                        
-                                                                        if (x11 == 0){#seed
-                                                                          x11 <- sample(1:99999999, 1)
+                                                  for (x17a in mut_step_normal){
+                                                    for (x18 in tries_max){
+                                                      for (x19 in interactionPartners){
+                                                        for (x20 in k){
+                                                          for (x21 in init_ann_range){
+                                                            for (x22 in complexInit){
+                                                              for (x23 in Report_annVar){
+                                                                for (x24 in Report_annVar_N){
+                                                                  for (x25 in Report_annInit){
+                                                                    for (x26 in recordFittestANNs){
+                                                                      for (x27 in nullReceivers){
+                                                                        for (x28 in nullSenders){
+                                                                          
+                                                                          if (seed == 0){#seed
+                                                                            x11 <- sample(1:99999999, 1)
+                                                                          }
+                                                                          
+                                                                          Xparams <- c(x1,x2,x3,x4,
+                                                                                       x5,x6,x7,x8,x9,
+                                                                                       x9a,x9b,x9c,
+                                                                                       x9d,x9e,x9f,x9g,
+                                                                                       x10,x11,x12,
+                                                                                       x13,x14,x15,x16,
+                                                                                       x17,x17a,x18,x19,x20,
+                                                                                       x21,x22,x23,x24,
+                                                                                       x25,x26,x27,x28,
+                                                                                       paste0("\"",dataFileName,"_",iterator,"\""),paste0("\"",dataFileFolder,"/","\""))
+                                                                          
+                                                                          writeTo <- paste0(folderPath,"/",fileName,"_",iterator)
+                                                                          txt <- "{\n\t"
+                                                                          i <- 1
+                                                                          for (i in 1:(length(paramsNames)-1)){
+                                                                            txt <- paste(txt,"\"",paramsNames[i],"\": ",Xparams[i],",\n\t",sep="")
+                                                                          }
+                                                                          txt <- paste(txt,"\"",paramsNames[i+1],"\": ",Xparams[i+1],"\n",
+                                                                                       "}",sep="")
+                                                                          
+                                                                          fileConn<-file(paste0(writeTo,"_params.json"))
+                                                                          writeLines(txt,fileConn)
+                                                                          close(fileConn)
+                                                                          
+                                                                          fileNameList<-append(fileNameList,paste0(fileName,"_",iterator))
+                                                                          
+                                                                          iterator <- iterator + 1
                                                                         }
-                                                                        
-                                                                        Xparams <- c(x1,x2,x3,x4,
-                                                                                     x5,x6,x7,x8,x9,
-                                                                                     x9a,x9b,x9c,
-                                                                                     x9d,x9e,x9f,x9g,
-                                                                                     x10,x11,x12,
-                                                                                     x13,x14,x15,x16,
-                                                                                     x17,x18,x19,x20,
-                                                                                     x21,x22,x23,x24,
-                                                                                     x25,x26,x27,x28,
-                                                                                     paste0("\"",dataFileName,"_",iterator,"\""),paste0("\"",dataFileFolder,"/","\""))
-                                                                        
-                                                                        writeTo <- paste0(folderPath,"/",fileName,"_",iterator)
-                                                                        txt <- "{\n\t"
-                                                                        i <- 1
-                                                                        for (i in 1:(length(paramsNames)-1)){
-                                                                          txt <- paste(txt,"\"",paramsNames[i],"\": ",Xparams[i],",\n\t",sep="")
-                                                                        }
-                                                                        txt <- paste(txt,"\"",paramsNames[i+1],"\": ",Xparams[i+1],"\n",
-                                                                                     "}",sep="")
-                                                                        
-                                                                        fileConn<-file(paste0(writeTo,"_params.json"))
-                                                                        writeLines(txt,fileConn)
-                                                                        close(fileConn)
-                                                                        
-                                                                        fileNameList<-append(fileNameList,paste0(fileName,"_",iterator))
-                                                                        
-                                                                        iterator <- iterator + 1
                                                                       }
                                                                     }
                                                                   }

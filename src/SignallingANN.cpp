@@ -13,7 +13,8 @@
 //3 s levels is weird because s = 0.5 --> receivers have no correct response to this.
 //So s_levels should always be even
 
-//To do - add a continuous option. If _levels are -1, then use continuous levels
+//To do - write null senders and receivers for hybrid equilibria and make sure both evolve correctly
+
 
 #include <iostream>
 #include <chrono>
@@ -33,15 +34,15 @@ double q_distribution_continuous(double m, double p_m, std::uniform_real_distrib
 	if (m == 0.5){
 		return prob(rng);
 	} else {
-	double q = -1.0;
-	while (q == -1.0){
-		double q_try = prob(rng);
-		double q_prob = (1.0-m) + (std::pow(q_try,p_m)*(2.0*m - 1.0));
-		if (prob(rng) < q_prob){
-			q = q_try;
+		double q = -1.0;
+		while (q == -1.0){
+			double q_try = prob(rng);
+			double q_prob = (1.0-m) + (std::pow(q_try,p_m)*(2.0*m - 1.0));
+			if (prob(rng) < q_prob){
+				q = q_try;
+			}
 		}
-	}
-	return q;
+		return q;
 	}
 }
 
@@ -179,7 +180,7 @@ int main(){
 
 	int initOption = 1;
 	int maxTrainingTime = 100000;
-	double targetAccuracy = 0.98;
+	double targetAccuracy = 0.0;
 
 	int replicates = 1;
 
@@ -187,12 +188,12 @@ int main(){
 	int q_levels = 2;		//Number of q values to use. If negative, continuous with that many attempts before 0 is chosen.
 	int r_levels = 2;		//Number of r values to use. If negative, continuous with that many attempts before 0 is chosen.
 
-	double cMax = 1.5;		//Cost of s = 1 to q = 0
+	double cMax = 0.7;		//Cost of s = 1 to q = 0
 	double cMin = 0.1;		//Cost of s = 1 to q = 1
 
-	double p_q = 5.0;
-	double p_s = 0.4;
-	double p_rS = 2.0;
+	double p_q = 1.0;
+	double p_s = 1.0;
+	double p_rS = 1.0;
 	double p_rR = 1.0;
 	double p_m = 1.0;
 
@@ -205,12 +206,14 @@ int main(){
 	int seed = timeInSeconds;
 
 	double N = 1000;
-	int G = 2500;
+	int G = 100000;
 
-	double mut_rate_ann_S = 0.01;
-	double mut_rate_ann_R = 0.01;
-	double mut_step_ann_S = 0.01;
-	double mut_step_ann_R = 0.01;
+	double mut_rate_ann_S = 0.001;
+	double mut_rate_ann_R = 0.001;
+	double mut_step_ann_S = 0.005;
+	double mut_step_ann_R = 0.005;
+
+	bool mut_step_normal = true;
 
 	int tries_max = 10;	//Max number of times to try all discrete s or r values. If all vals are tried this many times with no selection, value of 0 is used
 	bool try_0_first_S = false;
@@ -230,9 +233,9 @@ int main(){
 	bool nullReceivers = false;
 	bool nullSenders = false;
 
-	std::string dataFileName = "real_data";
-	//	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/data";
-	std::string dataFileFolder = "C:/Users/owner/Documents/trash";
+	std::string dataFileName = "normalDist";
+	std::string dataFileFolder = "C:/Users/owner/eclipse-workspace/SignallingANN/data";
+	//std::string dataFileFolder = "C:/Users/owner/Documents/simData";
 
 
 	*/
@@ -279,6 +282,7 @@ int main(int argc, char* argv[]){
 	double mut_rate_ann_R = params.mut_rate_ann_R;
 	double mut_step_ann_S = params.mut_step_ann_S;
 	double mut_step_ann_R = params.mut_step_ann_R;
+	bool mut_step_normal = params.mut_step_normal;
 	int tries_max = params.tries_max;
 	int interactionPartners = params.interactionPartners;
 	int k = params.k;
@@ -345,10 +349,10 @@ int main(int argc, char* argv[]){
 	//Prepare output files
 	annVars << "rep,gen,indType,indNum,quality,fitness,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38";
 	//		dataLog << "rep,gen,ind,indType,sendType,strategy,alphaBeta,fitness";
-	paramFile << "initOption,maxTrainingTime,targetAccuracy,replicates,s_levels,q_levels,r_levels,cMax,cMin,p_q,p_s,p_rS,p_rR,p_m,try_0_first_S,try_0_first_R,m,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,nullReceivers,nullSenders,tries_max,dataFileName ,dataFileFolder";
+	paramFile << "initOption,maxTrainingTime,targetAccuracy,replicates,s_levels,q_levels,r_levels,cMax,cMin,p_q,p_s,p_rS,p_rR,p_m,try_0_first_S,try_0_first_R,m,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,mut_step_normal,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,nullReceivers,nullSenders,tries_max,dataFileName ,dataFileFolder";
 	//paramFile << "\n"<< std::to_string(replicates) << "," << std::to_string(s_levels) << "," << std::to_string(q_levels) << "," << std::to_string(cMax)<<","<<std::to_string(cMin)<<","<<std::to_string(seed)<<","<<std::to_string(N)<<","<<std::to_string(G)<<","<<std::to_string(mut_rate_ann_S)<<","<<std::to_string(mut_rate_ann_R)<<","<<std::to_string(mut_step_ann_S)<<","<<std::to_string(mut_step_ann_R)<<","<<std::to_string(interactionPartners)<<","<<std::to_string(k)<<","<<std::to_string(init_ann_range)<<","<<std::to_string(complexInit)<<","<<std::to_string(Report_annVar)<<","<<std::to_string(Report_annVar_N)<<","<<std::to_string(Report_annInit)<<","<<std::to_string(recordFittestANNs)<<","<<dataFileName<<","<<dataFileFolder;
-	paramFile << "\n" << std::to_string(initOption) <<  ","<< std::to_string(maxTrainingTime) <<  ","<< std::to_string(targetAccuracy) <<  ","<< std::to_string(replicates) <<  ","<< std::to_string(s_levels) <<  ","<< std::to_string(q_levels) <<  ","<< std::to_string(r_levels) <<  ","<< std::to_string(cMax) <<  ","<< std::to_string(cMin) << "," << std::to_string(p_q)<<","<<std::to_string(p_s)<<","<<std::to_string(p_rS)<<","<<std::to_string(p_rR)<<","<<std::to_string(p_m)<<","<<std::to_string(try_0_first_S)<<","<<std::to_string(try_0_first_R)<<","<<std::to_string(m) <<  ","<< std::to_string(seed) <<  ","<< std::to_string(N) <<  ","<< std::to_string(G) <<  ","<< std::to_string(mut_rate_ann_S) <<  ","<< std::to_string(mut_rate_ann_R) <<  ","<< std::to_string(mut_step_ann_S) <<  ","<< std::to_string(mut_step_ann_R)  <<  ","<< std::to_string(interactionPartners) <<  ","<< std::to_string(k) <<  ","<< std::to_string(init_ann_range) <<  ","<< std::to_string(complexInit) <<  ","<< std::to_string(Report_annVar) <<  ","<< std::to_string(Report_annVar_N) <<  ","<< std::to_string(Report_annInit) <<  ","<< std::to_string(recordFittestANNs) <<  ","<< std::to_string(nullReceivers)<<  ","<< std::to_string(nullSenders) << ","<< std::to_string(tries_max) << ","<<dataFileName<<  ","<<dataFileFolder;
-
+	paramFile << "\n" << std::to_string(initOption) <<  ","<< std::to_string(maxTrainingTime) <<  ","<< std::to_string(targetAccuracy) <<  ","<< std::to_string(replicates) <<  ","<< std::to_string(s_levels) <<  ","<< std::to_string(q_levels) <<  ","<< std::to_string(r_levels) <<  ","<< std::to_string(cMax) <<  ","<< std::to_string(cMin) << "," << std::to_string(p_q)<<","<<std::to_string(p_s)<<","<<std::to_string(p_rS)<<","<<std::to_string(p_rR)<<","<<std::to_string(p_m)<<","<<std::to_string(try_0_first_S)<<","<<std::to_string(try_0_first_R)<<","<<std::to_string(m) <<  ","<< std::to_string(seed) <<  ","<< std::to_string(N) <<  ","<< std::to_string(G) <<  ","<< std::to_string(mut_rate_ann_S) <<  ","<< std::to_string(mut_rate_ann_R) <<  ","<< std::to_string(mut_step_ann_S) <<  ","<< std::to_string(mut_step_ann_R)  << "," << std::to_string(mut_step_normal) << ","<< std::to_string(interactionPartners) <<  ","<< std::to_string(k) <<  ","<< std::to_string(init_ann_range) <<  ","<< std::to_string(complexInit) <<  ","<< std::to_string(Report_annVar) <<  ","<< std::to_string(Report_annVar_N) <<  ","<< std::to_string(Report_annInit) <<  ","<< std::to_string(recordFittestANNs) <<  ","<< std::to_string(nullReceivers)<<  ","<< std::to_string(nullSenders) << ","<< std::to_string(tries_max) << ","<<dataFileName<<  ","<<dataFileFolder;
+	paramFile.close();
 	//Determine what values of s and q are used
 	//These are evenly spaced from 0 to 1
 	//if (s_levels < 2 || q_levels < 2 || r_levels < 2){
@@ -438,8 +442,11 @@ int main(int argc, char* argv[]){
 	auto ann_mu_S = std::bernoulli_distribution(std::abs(mut_rate_ann_S)); //distribution for ann mutation chance - sender
 	auto ann_mu_R = std::bernoulli_distribution(std::abs(mut_rate_ann_R)); //distribution for ann mutation chance - receivers
 
-	auto ann_mu_size_S = std::cauchy_distribution<double>(0.0, std::abs(mut_step_ann_S));		//Size of ann mutations - senders
-	auto ann_mu_size_R = std::cauchy_distribution<double>(0.0, std::abs(mut_step_ann_R));		//Size of ann mutations - receivers
+	auto ann_mu_size_S_normal = std::normal_distribution<double>(0.0, std::abs(mut_step_ann_S));		//Size of ann mutations - senders
+	auto ann_mu_size_R_normal = std::normal_distribution<double>(0.0, std::abs(mut_step_ann_R));		//Size of ann mutations - receivers
+
+	auto ann_mu_size_S_cauchy = std::cauchy_distribution<double>(0.0, std::abs(mut_step_ann_S));		//Size of ann mutations - senders
+	auto ann_mu_size_R_cauchy = std::cauchy_distribution<double>(0.0, std::abs(mut_step_ann_R));		//Size of ann mutations - receivers
 
 	//Make quality distribution - discrete distribution, for now in straight line.
 	//m determines the % q=1 in the population when q_levels = 2.
@@ -535,10 +542,7 @@ int main(int argc, char* argv[]){
 
 		//Now SenderPopulation and ReceiverPopulation are populated with agents of random networks and fitness 0.
 
-
-
-
-		//Initialize option: Honest - take the ANNs and train them to prespecified behavior.
+	//Initialize option: Honest - take the ANNs and train them to prespecified behavior.
 		int genAcheived = maxTrainingTime;
 		if (initOption == 1){	//This is for s_levels = 2, q_levels = 2. This is a Zollman Honest Equilibrium
 			//What if we init at hybrid equilibrium - q = 0, prob sending =
@@ -731,7 +735,11 @@ int main(int argc, char* argv[]){
 						for (int m = 0; m <= 38; m++){
 							if (ann_mu_S(rng)){	//Mutation to this weight occurs
 								//which ann variable to mutate, size of mutation
-								SenderOffspring[n].ann_mutate(m, ann_mu_size_S(rng));
+								if (mut_step_normal == true){
+									SenderOffspring[n].ann_mutate(m, ann_mu_size_S_normal(rng));
+								} else {
+									SenderOffspring[n].ann_mutate(m, ann_mu_size_S_cauchy(rng));
+								}
 							}
 						}
 
@@ -756,7 +764,11 @@ int main(int argc, char* argv[]){
 						for (int m = 0; m <= 38; m++){
 							if (ann_mu_R(rng)){	//Mutation to this weight occurs
 								//which ann variable to mutate, size of mutation
-								ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R(rng));
+								if (mut_step_normal == true){
+									ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R_normal(rng));
+								} else {
+									ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R_cauchy(rng));
+								}
 							}
 						}
 					}
@@ -805,6 +817,7 @@ int main(int argc, char* argv[]){
 			if (q_levels > 0){
 				double qual = q_vals[q_distribution_discrete(rng)];
 				SenderPopulation[n].set_quality(qual);
+				//	std::cout << qual << "\n";
 			} else {
 				double qual = q_distribution_continuous(m, p_m, prob, rng);
 				SenderPopulation[n].set_quality(qual);
@@ -840,6 +853,9 @@ int main(int argc, char* argv[]){
 					double r = select_r_Receiver(R_cur, s, r_levels, r_vals, tries_max, try_0_first_S, prob, rng);
 
 					//Modify sender fitness
+					//If I want to try a multiplicative function, change this!
+						// but because of multiple interaction partners, all costs and benefits need to be multiplied at end... right?
+
 					double senderCost = cost_function(s, q_cur, p_s, p_q, cMax, cMin);
 					double senderBenefit = sender_benefit_function(r, p_rS);
 					double senderPayoff = senderBenefit - senderCost;
@@ -848,7 +864,7 @@ int main(int argc, char* argv[]){
 					// Modify receiver fitness
 					ReceiverPopulation[nullVecR[j]].change_fitness(receiver_benefit_function(r, q_cur, p_rR));
 
-				//	std::cout << "s: " << s << "   q: " << q_cur << "   r: " << r << "   senderPayoff: " << senderPayoff << "   ReceiverPayoff: " << receiver_benefit_function(r, q_cur, p_rR) << "\n";
+					//	std::cout << "s: " << s << "   q: " << q_cur << "   r: " << r << "   senderPayoff: " << senderPayoff << "   ReceiverPayoff: " << receiver_benefit_function(r, q_cur, p_rR) << "\n";
 
 				}//End loop for this individual
 
@@ -894,10 +910,14 @@ int main(int argc, char* argv[]){
 					for (int m = 0; m <= 38; m++){
 						if (ann_mu_S(rng)){	//Mutation to this weight occurs
 							//which ann variable to mutate, size of mutation
-							SenderOffspring[n].ann_mutate(m, ann_mu_size_S(rng));
+							if (mut_step_normal == true){
+								SenderOffspring[n].ann_mutate(m, ann_mu_size_S_normal(rng));
+							} else {
+								SenderOffspring[n].ann_mutate(m, ann_mu_size_S_cauchy(rng));
+							}
 						}
 					}
-				} else { //nullSenders = false
+				} else { //nullSenders = true
 					SenderOffspring[n] = SenderPopulation[n];
 				}
 
@@ -929,7 +949,11 @@ int main(int argc, char* argv[]){
 					for (int m = 0; m <= 38; m++){
 						if (ann_mu_R(rng)){	//Mutation to this weight occurs
 							//which ann variable to mutate, size of mutation
-							ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R(rng));
+							if (mut_step_normal == true){
+								ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R_normal(rng));
+							} else {
+								ReceiverOffspring[n].ann_mutate(m, ann_mu_size_R_cauchy(rng));
+							}
 						}
 					}
 				} else { //Null receivers = true
@@ -968,6 +992,7 @@ int main(int argc, char* argv[]){
 							}
 						}
 					}
+
 					//By the end of this, fittestSenders will contain the indices of the Report_annVar_N fittest senders in the population
 					//Do the same for receivers
 					std::vector<int> fittestReceivers;
@@ -1037,7 +1062,6 @@ int main(int argc, char* argv[]){
 	}//End replicate loop
 
 	//	dataLog.close();
-	paramFile.close();
 	annVars.close();
 
 

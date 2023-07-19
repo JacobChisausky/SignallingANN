@@ -27,6 +27,7 @@ void from_json(const nlohmann::json& j, parameters& t)
 	NLOHMANN_JSON_FROM(mut_rate_ann_R);
 	NLOHMANN_JSON_FROM(mut_step_ann_S);
 	NLOHMANN_JSON_FROM(mut_step_ann_R);
+	NLOHMANN_JSON_FROM(mut_step_normal);
 	NLOHMANN_JSON_FROM(tries_max);
 	NLOHMANN_JSON_FROM(interactionPartners);
 	NLOHMANN_JSON_FROM(k);

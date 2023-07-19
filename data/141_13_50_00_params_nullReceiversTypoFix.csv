@@ -1,2 +1,0 @@
-replicates,s_levels,q_levels,c0,c1,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,dataFileName,dataFileFolder
-1,2,2,2.000000,0.000000,12345678,1000.000000,2500,0.010000,0.010000,0.010000,0.010000,10,2,1.000000,1,5,100,1,1,nullReceiversTypoFix,C:/Users/owner/eclipse-workspace/SignallingANN/data

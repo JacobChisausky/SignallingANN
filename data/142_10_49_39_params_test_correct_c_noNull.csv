@@ -1,2 +1,0 @@
-initOption,maxTrainingTime,targetAccuracy,replicates,s_levels,q_levels,r_levels,cMax,cMin,m,seed,N,G,mut_rate_ann_S,mut_rate_ann_R,mut_step_ann_S,mut_step_ann_R,interactionPartners,k,init_ann_range,complexInit,Report_annVar,Report_annVar_N,Report_annInit,recordFittestANNs,nullReceivers,nullSenders,dataFileName ,dataFileFolder
-1,100000,0.980000,1,2,2,2,2.000000,0.000000,0.500000,12345678,1000.000000,2500,0.010000,0.010000,0.010000,0.010000,10,2,1.000000,1,5,100,1,1,0,0,test_correct_c_noNull,C:/Users/owner/eclipse-workspace/SignallingANN/data
